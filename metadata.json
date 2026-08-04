@@ -1,0 +1,6 @@
+{
+  "name": "DineReserve",
+  "description": "Restaurant Reservation & Dining Offers Platform featuring table booking, dining discounts, membership, wallet, menus, and owner analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
