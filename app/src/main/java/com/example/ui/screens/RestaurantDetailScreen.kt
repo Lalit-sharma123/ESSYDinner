@@ -67,6 +67,7 @@ import com.example.data.model.OfferEntity
 import com.example.data.model.RestaurantEntity
 import com.example.data.model.ReviewEntity
 import com.example.ui.components.VegNonVegBadge
+import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.DarkCardBorder
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.GoldContainer
@@ -86,12 +87,19 @@ fun RestaurantDetailScreen(
     onBackClick: () -> Unit,
     onToggleFavorite: (String) -> Unit,
     onBookClick: (RestaurantEntity) -> Unit,
-    onSubmitReview: (String, Float, String) -> Unit
+    onSubmitReview: (String, Float, String) -> Unit,
+    onJoinWaitlist: ((restaurantId: String, restaurantName: String, partySize: Int, date: String, timeSlot: String) -> Unit)? = null
 ) {
     val isFavorite = favorites.any { it.restaurantId == restaurant.id }
     var reviewRating by remember { mutableStateOf(5.0f) }
     var reviewText by remember { mutableStateOf("") }
     var showReviewForm by remember { mutableStateOf(false) }
+
+    var showWaitlistDialog by remember { mutableStateOf(false) }
+    var waitlistPartySize by remember { mutableStateOf(2) }
+    var waitlistTimeSlot by remember { mutableStateOf("ASAP (Next Available)") }
+    var waitlistSeatingPref by remember { mutableStateOf("Indoor Main Dining") }
+    var waitlistNotes by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -300,6 +308,253 @@ fun RestaurantDetailScreen(
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // LIVE CROWD HEATMAP CARD
+                Text(
+                    text = "LIVE CROWD HEAT MAP",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldPrimary,
+                    modifier = Modifier.testTag("crowd_heatmap_header")
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Hourly Occupancy Forecast",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Historical & predicted crowd density",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                            Surface(
+                                color = Color(0xFF10B981).copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text(
+                                    text = "● Live Sensor Feed",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF10B981),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Hourly visual bars
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .background(Color(0xFF0F172A), RoundedCornerShape(8.dp))
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            val sampleHours = listOf(15, 20, 25, 30, 45, 80, 95, 85, 60, 40, 20, 10)
+                            val hourLabels = listOf("12P", "1P", "2P", "3P", "4P", "5P", "6P", "7P", "8P", "9P", "10P", "11P")
+                            sampleHours.forEachIndexed { i, rate ->
+                                val barColor = when {
+                                    rate < 30 -> Color(0xFF10B981)
+                                    rate < 60 -> Color(0xFF0EA5E9)
+                                    rate < 85 -> Color(0xFFF59E0B)
+                                    else -> Color(0xFFEF4444)
+                                }
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Bottom,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.7f)
+                                            .height((rate * 0.7).dp)
+                                            .background(barColor, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = hourLabels[i],
+                                        fontSize = 8.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Surface(
+                                color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("⚡ Best Quiet Window", fontSize = 10.sp, color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
+                                    Text("3:00 PM - 5:00 PM (15% capacity)", fontSize = 11.sp, color = Color.White)
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                color = Color(0xFFEF4444).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("🔥 Peak Busy Window", fontSize = 10.sp, color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                                    Text("6:30 PM - 8:30 PM (95% full)", fontSize = 11.sp, color = Color.White)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // LIVE PARKING CARD & AMENITIES
+                Text(
+                    text = "AMENITIES & LIVE PARKING AVAILABILITY",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldPrimary,
+                    modifier = Modifier.testTag("live_parking_header")
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Valet & Guest Parking Lot", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("Live sensor parking availability feed", fontSize = 11.sp, color = Color.Gray)
+                            }
+                            Text(
+                                text = "5 / 12 Open",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF10B981)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Specialty badges
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(
+                                color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text("⚡ EV Chargers", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                                    Text("2 Available", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                }
+                            }
+                            Surface(
+                                color = Color(0xFF0EA5E9).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text("♿ Accessible", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0EA5E9))
+                                    Text("1 Open", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                }
+                            }
+                            Surface(
+                                color = GoldPrimary.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text("👑 Valet Service", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                                    Text("Attendant Active", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Interactive Slot Grid
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val slots = listOf(
+                                Triple("P-01", "Accessible", true),
+                                Triple("P-02", "EV Charge", true),
+                                Triple("P-03", "EV Charge", false),
+                                Triple("P-04", "VIP Resv", false),
+                                Triple("P-05", "Standard", true),
+                                Triple("P-06", "Standard", false)
+                            )
+                            slots.forEach { (slotNo, type, isAvail) ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isAvail) Color(0xFF10B981).copy(alpha = 0.15f) else Color(0xFFEF4444).copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isAvail) Color(0xFF10B981).copy(alpha = 0.4f) else Color(0xFFEF4444).copy(alpha = 0.4f)
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(6.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(slotNo, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        Text(type, fontSize = 8.sp, color = Color.LightGray)
+                                        Text(
+                                            if (isAvail) "Open" else "Occupied",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isAvail) Color(0xFF10B981) else Color(0xFFEF4444)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -629,37 +884,261 @@ fun RestaurantDetailScreen(
         ) {
             Row(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "FLAT ${restaurant.maxDiscountPercent}% OFF",
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.secondary
                     )
                     Text(
-                        text = "Free Cancellation • Instantly Confirmed",
-                        fontSize = 11.sp,
+                        text = "Free Cancellation • Instant",
+                        fontSize = 10.sp,
                         color = Color.Gray
                     )
                 }
 
-                Button(
-                    onClick = { onBookClick(restaurant) },
-                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { showWaitlistDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldPrimary),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.testTag("btn_join_waitlist")
+                    ) {
+                        Text(
+                            text = "Join Waitlist",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Button(
+                        onClick = { onBookClick(restaurant) },
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.testTag("btn_book_now")
+                    ) {
+                        Text(
+                            text = "Book A Table",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldOnPrimary
+                        )
+                    }
+                }
+            }
+        }
+
+        // Join Waitlist Dialog
+        if (showWaitlistDialog) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showWaitlistDialog = false }
+            ) {
+                Surface(
                     shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier.testTag("btn_book_now")
+                    color = DarkSurface,
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldPrimary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
                 ) {
-                    Text(
-                        text = "Book A Table",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = GoldOnPrimary
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        // Header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "JOIN LIVE WAITLIST",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldPrimary,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = restaurant.name,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                            }
+                            IconButton(onClick = { showWaitlistDialog = false }) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = "Close",
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Queue Time Banner
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = GoldPrimary.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    tint = GoldPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "⚡ Est. Wait Time: 15–20 Mins",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldPrimary
+                                    )
+                                    Text(
+                                        text = "2 parties currently ahead of you in line",
+                                        fontSize = 10.sp,
+                                        color = Color.LightGray
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Party Size Selector
+                        Text(
+                            text = "PARTY SIZE (GUESTS)",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(1, 2, 3, 4, 6, 8).forEach { size ->
+                                val isSelected = waitlistPartySize == size
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSelected) GoldPrimary else DarkBackground,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isSelected) GoldPrimary else DarkCardBorder
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { waitlistPartySize = size }
+                                ) {
+                                    Text(
+                                        text = "$size",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.Black else Color.White,
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Seating Preference
+                        Text(
+                            text = "SEATING PREFERENCE",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("Indoor Main", "Outdoor Patio", "Bar Counter").forEach { pref ->
+                                val isSelected = waitlistSeatingPref == pref
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSelected) GoldPrimary else DarkBackground,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isSelected) GoldPrimary else DarkCardBorder
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { waitlistSeatingPref = pref }
+                                ) {
+                                    Text(
+                                        text = pref,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.Black else Color.White,
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Special Request Notes
+                        OutlinedTextField(
+                            value = waitlistNotes,
+                            onValueChange = { waitlistNotes = it },
+                            placeholder = { Text("Special notes (e.g. High chair needed, anniversary)", fontSize = 11.sp, color = Color.Gray) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GoldPrimary,
+                                unfocusedBorderColor = DarkCardBorder,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // Confirm Button
+                        Button(
+                            onClick = {
+                                showWaitlistDialog = false
+                                onJoinWaitlist?.invoke(
+                                    restaurant.id,
+                                    restaurant.name,
+                                    waitlistPartySize,
+                                    "Today",
+                                    waitlistTimeSlot
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color.Black),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp)
+                        ) {
+                            Text(
+                                text = "Confirm & Join Waitlist Queue",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -72,7 +72,12 @@ fun HomeScreen(
     onBookClick: (RestaurantEntity) -> Unit,
     onSearchClick: () -> Unit,
     onOffersHubClick: () -> Unit,
-    onMembershipClick: () -> Unit
+    onMembershipClick: () -> Unit,
+    onWaitlistClick: () -> Unit = {},
+    onQrDiningClick: () -> Unit = {},
+    onCorporateClick: () -> Unit = {},
+    onCrmClick: () -> Unit = {},
+    onMenuBuilderClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -136,7 +141,68 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Enterprise Features Quick Navigation Row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = DarkSurface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, DarkCardBorder),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onWaitlistClick() }
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("⏳ Waitlist", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                    Text("Live Queue", fontSize = 9.sp, color = Color.Gray)
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = DarkSurface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, DarkCardBorder),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onQrDiningClick() }
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("📱 QR Dining", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                    Text("Table Order", fontSize = 9.sp, color = Color.Gray)
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = DarkSurface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, DarkCardBorder),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onCorporateClick() }
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🏢 Corporate", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                    Text("Business Pay", fontSize = 9.sp, color = Color.Gray)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Gold Member Benefit Banner
         Card(

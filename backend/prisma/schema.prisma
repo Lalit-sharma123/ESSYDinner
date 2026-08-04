@@ -1,0 +1,596 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  RESTAURANT_OWNER
+  ADMIN
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum WaitlistStatus {
+  QUEUED
+  OFFERED
+  ACCEPTED
+  CANCELLED
+  EXPIRED
+}
+
+enum SessionStatus {
+  ACTIVE
+  BILL_REQUESTED
+  COMPLETED
+}
+
+enum OrderStatus {
+  PLACED
+  PREPARING
+  SERVED
+  CANCELLED
+}
+
+enum CorporateApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  phone            String            @unique
+  passwordHash     String
+  fullName         String
+  role             Role              @default(CUSTOMER)
+  membershipTier   String            @default("GOLD")
+  rewardPoints     Int               @default(350)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  bookings         Booking[]
+  waitlistEntries  WaitlistEntry[]
+  diningSessions   DiningSession[]
+  crmProfile       CustomerCrm?
+  corporateEmp     CorporateEmployee?
+  reviews          Review[]
+  walletTxns       WalletTransaction[]
+  userAllergies    UserAllergy[]
+  vipProfile       VipProfile?
+  preferences      CustomerPreference[]
+  visitHistories   VisitHistory[]
+}
+
+model Restaurant {
+  id                 String            @id @default(uuid())
+  name               String
+  tagline            String
+  cuisineType        String
+  rating             Float             @default(4.8)
+  reviewCount        Int               @default(120)
+  priceRange         String            @default("$$$")
+  address            String
+  area               String
+  city               String
+  latitude           Float
+  longitude          Float
+  heroImageUrl       String
+  galleryImages      String[]
+  maxDiscountPercent Int               @default(20)
+  hasTableBooking    Boolean           @default(true)
+  hasWaitlist        Boolean           @default(true)
+  hasQrDining        Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  menuItems          MenuItem[]
+  bookings           Booking[]
+  waitlistEntries    WaitlistEntry[]
+  diningSessions     DiningSession[]
+  offers             OfferRule[]
+  reviews            Review[]
+  floors             RestaurantFloor[]
+  tables             RestaurantTable[]
+  crowdAnalytics     HourlyCrowdAnalytics[]
+  trafficLogs        RestaurantTraffic[]
+  parkingLots        ParkingLot[]
+  operationsMetrics  OperationsMetric[]
+  visitHistories     VisitHistory[]
+}
+
+model MenuItem {
+  id                 String            @id @default(uuid())
+  restaurantId       String
+  restaurant         Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name               String
+  description        String
+  category           String
+  price              Float
+  isVegetarian       Boolean           @default(true)
+  imageUrl           String            @default("")
+  calories           Int               @default(450)
+  proteinGrams       Float             @default(14.0)
+  carbsGrams         Float             @default(50.0)
+  fatGrams           Float             @default(18.0)
+  spicyLevel         Int               @default(1)
+  prepTimeMins       Int               @default(15)
+  allergensCsv       String            @default("Dairy, Gluten")
+  createdAt          DateTime          @default(now())
+
+  variants           MenuVariant[]
+  addons             MenuAddon[]
+  ingredients        MenuIngredient[]
+}
+
+model MenuVariant {
+  id                 String            @id @default(uuid())
+  menuItemId         String
+  menuItem           MenuItem          @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  variantName        String
+  priceAdjustment    Float             @default(0.0)
+}
+
+model MenuAddon {
+  id                 String            @id @default(uuid())
+  menuItemId         String
+  menuItem           MenuItem          @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  addonName          String
+  price              Float
+}
+
+model Booking {
+  id                 String            @id @default(uuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId       String
+  restaurant         Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  partySize          Int
+  bookingDate        String
+  timeSlot           String
+  seatingArea        String            @default("Main Dining")
+  discountPercent    Int               @default(0)
+  status             BookingStatus     @default(CONFIRMED)
+  qrCodeData         String
+  createdAt          DateTime          @default(now())
+
+  qrRecord           QrCodeSessionRecord?
+}
+
+model WaitlistEntry {
+  id                 String            @id @default(uuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId       String
+  restaurant         Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurantName     String
+  partySize          Int
+  queuePosition      Int
+  estWaitMins        Int
+  isPriority         Boolean           @default(false)
+  priorityScore      Int               @default(0)
+  status             WaitlistStatus    @default(QUEUED)
+  offeredAt          DateTime?
+  expiresAt          DateTime?
+  createdAt          DateTime          @default(now())
+}
+
+model DiningSession {
+  id                 String            @id @default(uuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId       String
+  restaurant         Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableNumber        String
+  status             SessionStatus     @default(ACTIVE)
+  subtotal           Float             @default(0.0)
+  discount           Float             @default(0.0)
+  tax                Float             @default(0.0)
+  total              Float             @default(0.0)
+  createdAt          DateTime          @default(now())
+
+  orders             DiningOrderItem[]
+  serviceRequests    ServiceRequest[]
+  splits             BillSplit[]
+}
+
+model BillSplit {
+  id                 String            @id @default(uuid())
+  sessionId          String
+  session            DiningSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  splitType          String            @default("EQUAL") // EQUAL or ITEMIZED
+  numAttendees       Int               @default(2)
+  tipPercent         Float             @default(15.0)
+  subtotal           Float
+  tax                Float
+  tip                Float
+  grandTotal         Float
+  createdAt          DateTime          @default(now())
+
+  shares             BillShare[]
+}
+
+model BillShare {
+  id                 String            @id @default(uuid())
+  splitId            String
+  split              BillSplit         @relation(fields: [splitId], references: [id], onDelete: Cascade)
+  attendeeName       String
+  itemIdsJson        String            @default("[]")
+  subtotal           Float
+  tax                Float
+  tip                Float
+  totalShare         Float
+  isPaid             Boolean           @default(false)
+  paidAt             DateTime?
+}
+
+model DiningOrderItem {
+  id                 String            @id @default(uuid())
+  sessionId          String
+  session            DiningSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  menuItemId         String
+  itemName           String
+  unitPrice          Float
+  quantity           Int               @default(1)
+  notes              String            @default("")
+  status             OrderStatus       @default(PLACED)
+}
+
+model ServiceRequest {
+  id                 String            @id @default(uuid())
+  sessionId          String
+  session            DiningSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  requestType        String
+  note               String            @default("")
+  isResolved         Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+}
+
+model CustomerCrm {
+  id                 String            @id @default(uuid())
+  userId             String            @unique
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  visitCount         Int               @default(12)
+  totalSpend         Float             @default(1450.0)
+  avgBill            Float             @default(120.8)
+  foodAllergies      String            @default("Nuts, Dairy")
+  favoriteDishes     String            @default("Truffle Pasta, Wagyu Steak")
+  preferredTable     String            @default("Window Booth #4")
+  specialNotes       String            @default("Loves sparkling water upon arrival")
+  membershipLevel    String            @default("VIP Platinum")
+  segmentTag         String            @default("High Spender")
+}
+
+model Company {
+  id                     String            @id @default(uuid())
+  companyName            String
+  corporateWalletBalance Float             @default(25000.0)
+  monthlyBudget          Float             @default(30000.0)
+  
+  departments            CorporateDepartment[]
+  employees              CorporateEmployee[]
+  approvals              CorporateApproval[]
+}
+
+model CorporateDepartment {
+  id                 String            @id @default(uuid())
+  companyId          String
+  company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  departmentName     String
+  allocatedBudget    Float
+  spentAmount        Float             @default(0.0)
+}
+
+model CorporateEmployee {
+  id                 String            @id @default(uuid())
+  companyId          String
+  company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId             String            @unique
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department         String
+  employeeCode       String
+  monthlyAllowance   Float             @default(500.0)
+}
+
+model CorporateApproval {
+  id                 String            @id @default(uuid())
+  companyId          String
+  company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeName       String
+  amount             Float
+  restaurantName     String
+  bookingDate        String
+  status             CorporateApprovalStatus @default(PENDING)
+  createdAt          DateTime          @default(now())
+}
+
+model OfferRule {
+  id                 String            @id @default(uuid())
+  restaurantId       String
+  restaurant         Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  title              String
+  offerType          String
+  discountPercent    Int
+  maxDiscountAmount  Float
+  validTimeWindow    String
+  isActive           Boolean           @default(true)
+}
+
+model Review {
+  id                 String            @id @default(uuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId       String
+  restaurant         Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  rating             Float
+  comment            String
+  ownerReply         String            @default("")
+  createdAt          DateTime          @default(now())
+}
+
+model WalletTransaction {
+  id                 String            @id @default(uuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title              String
+  amount             Float
+  type               String            @default("CREDIT")
+  createdAt          DateTime          @default(now())
+}
+
+model QrCodeSessionRecord {
+  id           String    @id @default(uuid())
+  bookingId    String    @unique
+  booking      Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  restaurantId String
+  tableNumber  String
+  encryptedQr  String    @unique
+  secretNonce  String
+  issuedAt     DateTime  @default(now())
+  expiresAt    DateTime
+  isUsed       Boolean   @default(false)
+  usedAt       DateTime?
+  isCheckedOut Boolean   @default(false)
+  checkedOutAt DateTime?
+}
+
+// ================= MODULE 1: LIVE TABLE OCCUPANCY (DIGITAL TWIN) =================
+enum TableStatus {
+  AVAILABLE
+  RESERVED
+  DINING
+  CLEANING
+  BLOCKED
+  OUT_OF_SERVICE
+}
+
+model RestaurantFloor {
+  id           String            @id @default(uuid())
+  restaurantId String
+  restaurant   Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  floorName    String            @default("Main Floor")
+  level        Int               @default(1)
+  tables       RestaurantTable[]
+  createdAt    DateTime          @default(now())
+}
+
+model RestaurantTable {
+  id           String               @id @default(uuid())
+  restaurantId String
+  restaurant   Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  floorId      String
+  floor        RestaurantFloor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  tableNumber  String
+  capacity     Int                  @default(4)
+  status       TableStatus          @default(AVAILABLE)
+  positionX    Float                @default(0.0)
+  positionY    Float                @default(0.0)
+  shape        String               @default("RECTANGLE") // RECTANGLE, CIRCLE, SQUARE, BOOTH
+  mergedWith   String               @default("")
+  qrCode       String               @default("")
+  lastUpdated  DateTime             @updatedAt
+
+  history      TableStatusHistory[]
+  cleaningLogs TableCleaningLog[]
+}
+
+model TableStatusHistory {
+  id             String          @id @default(uuid())
+  tableId        String
+  table          RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  previousStatus TableStatus
+  newStatus      TableStatus
+  changedBy      String          @default("SYSTEM")
+  timestamp      DateTime        @default(now())
+}
+
+model TableCleaningLog {
+  id          String          @id @default(uuid())
+  tableId     String
+  table       RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  cleanedBy   String
+  startedAt   DateTime        @default(now())
+  completedAt DateTime        @default(now())
+}
+
+// ================= MODULE 2: CROWD HEAT MAP =================
+model HourlyCrowdAnalytics {
+  id            String     @id @default(uuid())
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  dayOfWeek     Int        // 0=Sun, 1=Mon, ..., 6=Sat
+  hourOfDay     Int        // 0-23
+  occupancyRate Float      @default(0.0)
+  crowdLevel    String     @default("Moderate") // Very Quiet, Quiet, Moderate, Busy, Very Busy
+  walkInCount   Int        @default(0)
+  bookingCount  Int        @default(0)
+  updatedAt     DateTime   @updatedAt
+}
+
+model RestaurantTraffic {
+  id               String     @id @default(uuid())
+  restaurantId     String
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  date             String     // YYYY-MM-DD
+  hour             Int        // 0-23
+  activeOccupancy  Int        @default(0)
+  waitlistCount    Int        @default(0)
+  noShowCount      Int        @default(0)
+  createdAt        DateTime   @default(now())
+}
+
+// ================= MODULE 3: LIVE PARKING AVAILABILITY =================
+enum ParkingSlotState {
+  Available
+  Occupied
+  Reserved
+  Disabled
+  EV_Charging
+  VIP
+}
+
+model ParkingLot {
+  id            String        @id @default(uuid())
+  restaurantId  String
+  restaurant    Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  lotName       String        @default("Main Parking Lot")
+  totalCapacity Int           @default(20)
+  slots         ParkingSlot[]
+  createdAt     DateTime      @default(now())
+}
+
+model ParkingSlot {
+  id          String           @id @default(uuid())
+  lotId       String
+  lot         ParkingLot       @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  slotNumber  String
+  slotType    String           @default("STANDARD") // STANDARD, EV_CHARGING, ACCESSIBLE, VIP
+  state       ParkingSlotState @default(Available)
+  occupiedBy  String           @default("")
+  updatedAt   DateTime         @updatedAt
+
+  history     ParkingHistory[]
+}
+
+model ParkingHistory {
+  id            String      @id @default(uuid())
+  slotId        String
+  slot          ParkingSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  previousState String
+  newState      String
+  timestamp     DateTime    @default(now())
+}
+
+// ================= MODULE 4: ALLERGY PROTECTION ENGINE =================
+model Allergen {
+  id          String   @id @default(uuid())
+  code        String   @unique // PEANUTS, MILK, EGG, FISH, SHELLFISH, SOY, GLUTEN, SESAME, TREE_NUTS, MUSTARD, CELERY, SULPHITES, LUPIN, MOLLUSCS
+  name        String
+  description String   @default("")
+}
+
+model Ingredient {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  allergensCsv String   @default("")
+  createdAt    DateTime @default(now())
+
+  menuItems    MenuIngredient[]
+}
+
+model MenuIngredient {
+  id           String     @id @default(uuid())
+  menuItemId   String
+  menuItem     MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+}
+
+model UserAllergy {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allergenName String
+  severity     String   @default("HIGH") // HIGH, MODERATE, MILD
+  createdAt    DateTime @default(now())
+}
+
+model AllergyWarningLog {
+  id                String   @id @default(uuid())
+  userId            String
+  menuItemId        String
+  allergensDetected String
+  confirmedByUser   Boolean  @default(false)
+  timestamp         DateTime @default(now())
+}
+
+// ================= MODULE 5: RESTAURANT OPERATIONS DASHBOARD =================
+model OperationsMetric {
+  id                 String     @id @default(uuid())
+  restaurantId       String
+  restaurant         Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  timestamp          DateTime   @default(now())
+  activeTablesCount  Int        @default(0)
+  occupancyPercent   Float      @default(0.0)
+  kitchenLoadPercent Float      @default(0.0)
+  todayRevenue       Float      @default(0.0)
+  todayReservations  Int        @default(0)
+  todayWalkIns       Int        @default(0)
+  waitlistQueueLength Int       @default(0)
+  avgDiningTimeMins  Int        @default(45)
+  avgWaitTimeMins    Int        @default(15)
+  noShowRate         Float      @default(0.0)
+  cancellationRate   Float      @default(0.0)
+}
+
+// ================= MODULE 6: VIP CUSTOMER RECOGNITION =================
+model VipProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier            String   @default("VIP")
+  visitCount      Int      @default(1)
+  lifetimeSpend   Float    @default(0.0)
+  favoriteDish    String   @default("")
+  favoriteTable   String   @default("")
+  preferredWaiter String   @default("")
+  birthday        String   @default("")
+  anniversary     String   @default("")
+  allergies       String   @default("")
+  specialRequests String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CustomerPreference {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        String   // SEATING, DIET, DRINK, STAFF
+  preferenceKey   String
+  preferenceValue String
+  createdAt       DateTime @default(now())
+}
+
+model VisitHistory {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  visitDate    DateTime   @default(now())
+  spendAmount  Float      @default(0.0)
+  tableNumber  String     @default("")
+  notes        String     @default("")
+}
+

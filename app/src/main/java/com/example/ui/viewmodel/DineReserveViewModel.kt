@@ -3,11 +3,25 @@ package com.example.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.BookingEntity
+import com.example.data.model.CompanyEntity
+import com.example.data.model.CorporateApprovalEntity
+import com.example.data.model.CorporateDepartmentEntity
+import com.example.data.model.CorporateEmployeeEntity
+import com.example.data.model.CustomerCrmEntity
+import com.example.data.model.DiningOrderItemEntity
+import com.example.data.model.DiningSessionEntity
 import com.example.data.model.MenuItemEntity
+import com.example.data.model.MenuAddonEntity
+import com.example.data.model.MenuMediaEntity
+import com.example.data.model.MenuNutritionEntity
+import com.example.data.model.MenuVariantEntity
 import com.example.data.model.OfferEntity
 import com.example.data.model.RestaurantEntity
 import com.example.data.model.ReviewEntity
+import com.example.data.model.ServiceRequestEntity
+import com.example.data.model.WaitlistEntity
 import com.example.data.repository.DineReserveRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,7 +37,8 @@ enum class AppRoleMode {
 }
 
 enum class CustomerScreen {
-    HOME, SEARCH, RESTAURANT_DETAIL, BOOKING_FLOW, BOOKING_CONFIRMATION, MY_BOOKINGS, OFFERS_HUB, MEMBERSHIP, WALLET, FAVORITES_REVIEWS, NOTIFICATIONS
+    HOME, SEARCH, RESTAURANT_DETAIL, BOOKING_FLOW, BOOKING_CONFIRMATION, MY_BOOKINGS, OFFERS_HUB, MEMBERSHIP, WALLET, FAVORITES_REVIEWS, NOTIFICATIONS,
+    WAITLIST_HUB, QR_DINING_PORTAL, DIGITAL_MENU_BUILDER, RESTAURANT_CRM, CORPORATE_DINING
 }
 
 enum class SortOption {
@@ -119,6 +134,51 @@ class DineReserveViewModel(private val repository: DineReserveRepository) : View
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val notifications = repository.notifications
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // --- MODULE 1: WAITLIST STATE ---
+    val allWaitlistEntries: StateFlow<List<WaitlistEntity>> = repository.allWaitlistEntries
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _waitlistCountdownSeconds = MutableStateFlow(300) // 5 minutes
+    val waitlistCountdownSeconds: StateFlow<Int> = _waitlistCountdownSeconds.asStateFlow()
+
+    // --- MODULE 2: QR DINING STATE ---
+    val activeDiningSession: StateFlow<DiningSessionEntity?> = repository.activeDiningSession
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val activeSessionOrders: StateFlow<List<DiningOrderItemEntity>> = repository.getOrdersForSession("ds_active")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val activeSessionRequests: StateFlow<List<ServiceRequestEntity>> = repository.getServiceRequestsForSession("ds_active")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // --- MODULE 3: DIGITAL MENU STATE ---
+    fun getMenuNutrition(menuItemId: String) = repository.getNutritionForMenuItem(menuItemId)
+    fun getMenuVariants(menuItemId: String) = repository.getVariantsForMenuItem(menuItemId)
+    fun getMenuAddons(menuItemId: String) = repository.getAddonsForMenuItem(menuItemId)
+
+    // --- MODULE 4: CRM STATE ---
+    val crmCustomerProfiles: StateFlow<List<CustomerCrmEntity>> = repository.crmCustomerProfiles
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _crmSegmentFilter = MutableStateFlow<String?>("All")
+    val crmSegmentFilter: StateFlow<String?> = _crmSegmentFilter.asStateFlow()
+
+    private val _crmSearchQuery = MutableStateFlow("")
+    val crmSearchQuery: StateFlow<String> = _crmSearchQuery.asStateFlow()
+
+    // --- MODULE 5: CORPORATE DINING STATE ---
+    val corporateCompany: StateFlow<CompanyEntity?> = repository.corporateCompany
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val corporateDepartments: StateFlow<List<CorporateDepartmentEntity>> = repository.corporateDepartments
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val corporateEmployees: StateFlow<List<CorporateEmployeeEntity>> = repository.corporateEmployees
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val corporateApprovals: StateFlow<List<CorporateApprovalEntity>> = repository.corporateApprovals
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun getMenuItemsByRestaurant(restaurantId: String): Flow<List<MenuItemEntity>> =
@@ -420,4 +480,166 @@ class DineReserveViewModel(private val repository: DineReserveRepository) : View
             repository.markNotificationRead(id)
         }
     }
+
+    // --- MODULE 1 ACTIONS: WAITLIST ---
+    fun joinWaitlist(restaurantId: String, restaurantName: String, guestCount: Int, date: String, timeSlot: String) {
+        viewModelScope.launch {
+            val entry = WaitlistEntity(
+                id = "wl_${UUID.randomUUID().toString().take(6)}",
+                restaurantId = restaurantId,
+                restaurantName = restaurantName,
+                userId = "usr_current",
+                userName = "Current User",
+                guestCount = guestCount,
+                requestedDate = date,
+                requestedTime = timeSlot,
+                priorityLevel = if (_userMembershipTier.value.contains("VIP")) "VIP" else "STANDARD",
+                status = "NOTIFIED",
+                expiresAtTimestamp = System.currentTimeMillis() + 300_000L,
+                notifiedAtTimestamp = System.currentTimeMillis(),
+                queuePosition = 1
+            )
+            repository.joinWaitlist(entry)
+            startWaitlistTimer()
+        }
+    }
+
+    private fun startWaitlistTimer() {
+        _waitlistCountdownSeconds.value = 300
+        viewModelScope.launch {
+            while (_waitlistCountdownSeconds.value > 0) {
+                delay(1000L)
+                _waitlistCountdownSeconds.value -= 1
+            }
+        }
+    }
+
+    fun acceptWaitlistOffer(waitlistId: String) {
+        viewModelScope.launch {
+            val booking = repository.acceptWaitlistOffer(waitlistId)
+            _confirmedBooking.value = booking
+            _currentScreen.value = CustomerScreen.BOOKING_CONFIRMATION
+        }
+    }
+
+    fun cancelWaitlist(waitlistId: String) {
+        viewModelScope.launch {
+            repository.cancelWaitlist(waitlistId)
+        }
+    }
+
+    // --- MODULE 2 ACTIONS: QR DINING ---
+    fun openQrDiningPortal(bookingId: String, restaurantId: String, restaurantName: String, tableNumber: String) {
+        viewModelScope.launch {
+            repository.startDiningSession(bookingId, restaurantId, restaurantName, tableNumber)
+            _currentScreen.value = CustomerScreen.QR_DINING_PORTAL
+        }
+    }
+
+    fun placeDiningOrder(menuItemId: String, itemName: String, price: Double, quantity: Int, notes: String) {
+        viewModelScope.launch {
+            repository.placeDiningOrder("ds_active", menuItemId, itemName, price, quantity, notes)
+        }
+    }
+
+    fun requestTableService(requestType: String, note: String) {
+        viewModelScope.launch {
+            repository.requestService("ds_active", "Table 14", requestType, note)
+        }
+    }
+
+    fun checkoutDiningSession() {
+        viewModelScope.launch {
+            repository.checkoutDiningSession("ds_active")
+            _currentScreen.value = CustomerScreen.HOME
+        }
+    }
+
+    // --- MODULE 3 ACTIONS: DIGITAL MENU ---
+    fun saveMenuNutrition(menuItemId: String, calories: Int, protein: Double, carbs: Double, fat: Double, spicy: Int, prepTime: Int, allergens: String) {
+        viewModelScope.launch {
+            repository.saveMenuNutrition(
+                MenuNutritionEntity(
+                    menuItemId = menuItemId,
+                    calories = calories,
+                    proteinGrams = protein,
+                    carbsGrams = carbs,
+                    fatGrams = fat,
+                    spicyLevel = spicy,
+                    prepTimeMinutes = prepTime,
+                    allergenTagsCsv = allergens
+                )
+            )
+        }
+    }
+
+    fun addMenuVariant(menuItemId: String, variantName: String, priceAdjustment: Double) {
+        viewModelScope.launch {
+            repository.addMenuVariant(
+                MenuVariantEntity(
+                    id = "var_${UUID.randomUUID().toString().take(6)}",
+                    menuItemId = menuItemId,
+                    variantName = variantName,
+                    priceAdjustment = priceAdjustment
+                )
+            )
+        }
+    }
+
+    fun addMenuAddon(menuItemId: String, addonName: String, price: Double) {
+        viewModelScope.launch {
+            repository.addMenuAddon(
+                MenuAddonEntity(
+                    id = "add_${UUID.randomUUID().toString().take(6)}",
+                    menuItemId = menuItemId,
+                    addonName = addonName,
+                    price = price
+                )
+            )
+        }
+    }
+
+    // --- MODULE 4 ACTIONS: CRM ---
+    fun setCrmSegmentFilter(segmentTag: String?) {
+        _crmSegmentFilter.value = segmentTag
+    }
+
+    fun setCrmSearchQuery(query: String) {
+        _crmSearchQuery.value = query
+    }
+
+    fun updateCrmNotes(userId: String, notes: String) {
+        viewModelScope.launch {
+            repository.updateCrmNotes(userId, notes)
+        }
+    }
+
+    // --- MODULE 5 ACTIONS: CORPORATE DINING ---
+    fun addCorporateWalletFunds(amount: Double) {
+        viewModelScope.launch {
+            repository.addCorporateFunds("comp_1", amount)
+        }
+    }
+
+    fun requestCorporateApproval(employeeName: String, amount: Double, restaurantName: String, bookingDate: String) {
+        viewModelScope.launch {
+            val approval = CorporateApprovalEntity(
+                id = "app_${UUID.randomUUID().toString().take(6)}",
+                companyId = "comp_1",
+                employeeName = employeeName,
+                amount = amount,
+                restaurantName = restaurantName,
+                bookingDate = bookingDate,
+                status = "PENDING"
+            )
+            repository.createCorporateApproval(approval)
+        }
+    }
+
+    fun updateCorporateApprovalStatus(approvalId: String, status: String) {
+        viewModelScope.launch {
+            repository.updateCorporateApprovalStatus(approvalId, status)
+        }
+    }
 }
+

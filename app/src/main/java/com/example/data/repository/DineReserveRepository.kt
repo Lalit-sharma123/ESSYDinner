@@ -1,20 +1,40 @@
 package com.example.data.repository
 
 import com.example.data.local.BookingDao
+import com.example.data.local.CorporateDao
+import com.example.data.local.CrmDao
+import com.example.data.local.DigitalMenuDao
+import com.example.data.local.DiningOrderDao
+import com.example.data.local.DiningSessionDao
 import com.example.data.local.FavoriteDao
 import com.example.data.local.MenuItemDao
 import com.example.data.local.NotificationDao
 import com.example.data.local.OfferDao
 import com.example.data.local.RestaurantDao
 import com.example.data.local.ReviewDao
+import com.example.data.local.ServiceRequestDao
+import com.example.data.local.WaitlistDao
 import com.example.data.local.WalletDao
 import com.example.data.model.BookingEntity
+import com.example.data.model.CompanyEntity
+import com.example.data.model.CorporateApprovalEntity
+import com.example.data.model.CorporateDepartmentEntity
+import com.example.data.model.CorporateEmployeeEntity
+import com.example.data.model.CustomerCrmEntity
+import com.example.data.model.DiningOrderItemEntity
+import com.example.data.model.DiningSessionEntity
 import com.example.data.model.FavoriteEntity
 import com.example.data.model.MenuItemEntity
+import com.example.data.model.MenuAddonEntity
+import com.example.data.model.MenuMediaEntity
+import com.example.data.model.MenuNutritionEntity
+import com.example.data.model.MenuVariantEntity
 import com.example.data.model.OfferEntity
 import com.example.data.model.RestaurantEntity
 import com.example.data.model.ReviewEntity
+import com.example.data.model.ServiceRequestEntity
 import com.example.data.model.UserNotificationEntity
+import com.example.data.model.WaitlistEntity
 import com.example.data.model.WalletTransactionEntity
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
@@ -27,7 +47,14 @@ class DineReserveRepository(
     private val walletDao: WalletDao,
     private val reviewDao: ReviewDao,
     private val favoriteDao: FavoriteDao,
-    private val notificationDao: NotificationDao
+    private val notificationDao: NotificationDao,
+    private val waitlistDao: WaitlistDao,
+    private val diningSessionDao: DiningSessionDao,
+    private val diningOrderDao: DiningOrderDao,
+    private val serviceRequestDao: ServiceRequestDao,
+    private val digitalMenuDao: DigitalMenuDao,
+    private val crmDao: CrmDao,
+    private val corporateDao: CorporateDao
 ) {
     val allRestaurants: Flow<List<RestaurantEntity>> = restaurantDao.getAllRestaurants()
     val allBookings: Flow<List<BookingEntity>> = bookingDao.getAllBookings()
@@ -36,14 +63,152 @@ class DineReserveRepository(
     val favorites: Flow<List<FavoriteEntity>> = favoriteDao.getAllFavorites()
     val notifications: Flow<List<UserNotificationEntity>> = notificationDao.getAllNotifications()
 
+    // Module Flows
+    val allWaitlistEntries: Flow<List<WaitlistEntity>> = waitlistDao.getAllWaitlistEntries()
+    val activeDiningSession: Flow<DiningSessionEntity?> = diningSessionDao.getActiveSession()
+    val crmCustomerProfiles: Flow<List<CustomerCrmEntity>> = crmDao.getAllCustomerProfiles()
+    val corporateCompany: Flow<CompanyEntity?> = corporateDao.getCompany()
+    val corporateDepartments: Flow<List<CorporateDepartmentEntity>> = corporateDao.getDepartments()
+    val corporateEmployees: Flow<List<CorporateEmployeeEntity>> = corporateDao.getEmployees()
+    val corporateApprovals: Flow<List<CorporateApprovalEntity>> = corporateDao.getApprovals()
+
     fun getRestaurantById(id: String): Flow<RestaurantEntity?> = restaurantDao.getRestaurantById(id)
     fun getMenuItemsByRestaurant(restaurantId: String): Flow<List<MenuItemEntity>> = menuItemDao.getMenuItemsByRestaurant(restaurantId)
     fun getOffersForRestaurant(restaurantId: String): Flow<List<OfferEntity>> = offerDao.getOffersForRestaurant(restaurantId)
     fun getReviewsForRestaurant(restaurantId: String): Flow<List<ReviewEntity>> = reviewDao.getReviewsForRestaurant(restaurantId)
+    fun getWaitlistForRestaurant(restaurantId: String): Flow<List<WaitlistEntity>> = waitlistDao.getActiveWaitlistForRestaurant(restaurantId)
+    fun getOrdersForSession(sessionId: String): Flow<List<DiningOrderItemEntity>> = diningOrderDao.getOrdersForSession(sessionId)
+    fun getServiceRequestsForSession(sessionId: String): Flow<List<ServiceRequestEntity>> = serviceRequestDao.getRequestsForSession(sessionId)
 
+    fun getMediaForMenuItem(menuItemId: String): Flow<List<MenuMediaEntity>> = digitalMenuDao.getMediaForMenuItem(menuItemId)
+    fun getNutritionForMenuItem(menuItemId: String): Flow<MenuNutritionEntity?> = digitalMenuDao.getNutritionForMenuItem(menuItemId)
+    fun getVariantsForMenuItem(menuItemId: String): Flow<List<MenuVariantEntity>> = digitalMenuDao.getVariantsForMenuItem(menuItemId)
+    fun getAddonsForMenuItem(menuItemId: String): Flow<List<MenuAddonEntity>> = digitalMenuDao.getAddonsForMenuItem(menuItemId)
+
+    // Module 1: Waitlist
+    suspend fun joinWaitlist(entry: WaitlistEntity) {
+        waitlistDao.insertWaitlistEntry(entry)
+        notificationDao.insertNotification(
+            UserNotificationEntity(
+                id = UUID.randomUUID().toString(),
+                title = "Waitlist Joined - ${entry.restaurantName}",
+                message = "You are #${entry.queuePosition} in line for ${entry.guestCount} guests at ${entry.requestedTime}.",
+                category = "WAITLIST",
+                timestampString = "Just Now"
+            )
+        )
+    }
+
+    suspend fun notifyWaitlistCustomer(waitlistId: String, expiresAtMs: Long) {
+        waitlistDao.notifyWaitlistCustomer(waitlistId, "NOTIFIED", System.currentTimeMillis(), expiresAtMs)
+        notificationDao.insertNotification(
+            UserNotificationEntity(
+                id = UUID.randomUUID().toString(),
+                title = "Table Ready! 5 Min to Accept",
+                message = "A table has freed up! Accept within 5 minutes to confirm your reservation.",
+                category = "WAITLIST",
+                timestampString = "Just Now"
+            )
+        )
+    }
+
+    suspend fun acceptWaitlistOffer(waitlistId: String): BookingEntity {
+        waitlistDao.updateWaitlistStatus(waitlistId, "ACCEPTED")
+        val booking = BookingEntity(
+            id = "b_${UUID.randomUUID().toString().take(8)}",
+            bookingCode = "#DR-${(1000..9999).random()}",
+            restaurantId = "rest_1",
+            restaurantName = "Aura Fine Dining & Lounge",
+            restaurantAddress = "120 Wall Street, 24th Floor, New York, NY",
+            guestCount = 2,
+            bookingDate = "2026-08-04",
+            bookingTimeSlot = "08:00 PM",
+            occasion = "Waitlist Instant Booking",
+            seatingPref = "Standard Table",
+            specialRequests = "Confirmed from Waitlist",
+            offerTitle = "Waitlist Priority Offer",
+            discountAmount = 15.0,
+            totalEstimatedBill = 85.0,
+            status = "UPCOMING",
+            qrCodePayload = "DINERESERVE-WAITLIST-ACCEPTED"
+        )
+        bookingDao.insertBooking(booking)
+        return booking
+    }
+
+    suspend fun expireWaitlist(waitlistId: String) {
+        waitlistDao.updateWaitlistStatus(waitlistId, "EXPIRED")
+    }
+
+    suspend fun cancelWaitlist(waitlistId: String) {
+        waitlistDao.updateWaitlistStatus(waitlistId, "CANCELLED")
+    }
+
+    // Module 2: QR Dining
+    suspend fun startDiningSession(bookingId: String, restaurantId: String, restaurantName: String, tableNumber: String): DiningSessionEntity {
+        val session = DiningSessionEntity(
+            id = "ds_${UUID.randomUUID().toString().take(8)}",
+            bookingId = bookingId,
+            restaurantId = restaurantId,
+            restaurantName = restaurantName,
+            tableNumber = tableNumber,
+            status = "ACTIVE"
+        )
+        diningSessionDao.insertSession(session)
+        return session
+    }
+
+    suspend fun placeDiningOrder(sessionId: String, menuItemId: String, itemName: String, price: Double, quantity: Int, notes: String) {
+        val item = DiningOrderItemEntity(
+            id = "doi_${UUID.randomUUID().toString().take(8)}",
+            sessionId = sessionId,
+            menuItemId = menuItemId,
+            itemName = itemName,
+            price = price,
+            quantity = quantity,
+            status = "ACCEPTED",
+            specialNotes = notes
+        )
+        diningOrderDao.insertOrderItem(item)
+    }
+
+    suspend fun updateDiningOrderStatus(orderId: String, status: String) {
+        diningOrderDao.updateOrderStatus(orderId, status)
+    }
+
+    suspend fun requestService(sessionId: String, tableNumber: String, requestType: String, note: String) {
+        val req = ServiceRequestEntity(
+            id = "sr_${UUID.randomUUID().toString().take(8)}",
+            sessionId = sessionId,
+            tableNumber = tableNumber,
+            requestType = requestType,
+            status = "PENDING",
+            note = note
+        )
+        serviceRequestDao.insertServiceRequest(req)
+    }
+
+    suspend fun checkoutDiningSession(sessionId: String) {
+        diningSessionDao.checkoutSession(sessionId)
+    }
+
+    // Module 3: Digital Menu Extensions
+    suspend fun addMenuMedia(media: MenuMediaEntity) = digitalMenuDao.insertMedia(media)
+    suspend fun saveMenuNutrition(nutrition: MenuNutritionEntity) = digitalMenuDao.insertNutrition(nutrition)
+    suspend fun addMenuVariant(variant: MenuVariantEntity) = digitalMenuDao.insertVariant(variant)
+    suspend fun addMenuAddon(addon: MenuAddonEntity) = digitalMenuDao.insertAddon(addon)
+
+    // Module 4: CRM
+    suspend fun updateCrmNotes(userId: String, notes: String) = crmDao.updateSpecialNotes(userId, notes)
+
+    // Module 5: Corporate Dining
+    suspend fun addCorporateFunds(companyId: String, amount: Double) = corporateDao.addCorporateWalletBalance(companyId, amount)
+    suspend fun createCorporateApproval(approval: CorporateApprovalEntity) = corporateDao.insertApproval(approval)
+    suspend fun updateCorporateApprovalStatus(id: String, status: String) = corporateDao.updateApprovalStatus(id, status)
+
+    // Existing repository methods
     suspend fun createBooking(booking: BookingEntity) {
         bookingDao.insertBooking(booking)
-        // Auto create confirmation notification
         notificationDao.insertNotification(
             UserNotificationEntity(
                 id = UUID.randomUUID().toString(),
@@ -53,7 +218,6 @@ class DineReserveRepository(
                 timestampString = "Just Now"
             )
         )
-        // Add cashback reward
         walletDao.insertTransaction(
             WalletTransactionEntity(
                 id = UUID.randomUUID().toString(),
@@ -122,7 +286,6 @@ class DineReserveRepository(
     }
 
     suspend fun seedInitialDataIfEmpty() {
-        // Pre-populate if restaurants are empty
         val seedRestaurants = listOf(
             RestaurantEntity(
                 id = "rest_1",
@@ -346,6 +509,112 @@ class DineReserveRepository(
             UserNotificationEntity("n_2", "Weekend Offer Unlocked!", "Get up to 50% OFF at top rooftop lounge restaurants this weekend.", "OFFER", "3 hrs ago", false)
         )
 
+        // Seed New Modules
+        val seedWaitlist = listOf(
+            WaitlistEntity(
+                id = "wl_101",
+                restaurantId = "rest_1",
+                restaurantName = "Aura Fine Dining & Lounge",
+                userId = "usr_99",
+                userName = "Alexander Wright",
+                guestCount = 2,
+                requestedDate = "2026-08-04",
+                requestedTime = "08:00 PM",
+                priorityLevel = "VIP",
+                status = "NOTIFIED",
+                expiresAtTimestamp = System.currentTimeMillis() + 300_000L, // 5 min
+                notifiedAtTimestamp = System.currentTimeMillis(),
+                queuePosition = 1
+            )
+        )
+
+        val seedDiningSession = DiningSessionEntity(
+            id = "ds_active",
+            bookingId = "b_101",
+            restaurantId = "rest_1",
+            restaurantName = "Aura Fine Dining & Lounge",
+            tableNumber = "Table 14 (Window)",
+            status = "ACTIVE",
+            totalBillAmount = 98.0
+        )
+
+        val seedDiningOrders = listOf(
+            DiningOrderItemEntity("doi_1", "ds_active", "m_1", "Truffle Mushroom Risotto", 28.0, 1, "SERVED", "Extra cheese on top"),
+            DiningOrderItemEntity("doi_2", "ds_active", "m_2", "Charred Wagyu Ribeye", 48.0, 1, "PREPARING", "Medium rare")
+        )
+
+        val seedNutrition = listOf(
+            MenuNutritionEntity("m_1", 520, 16.5, 62.0, 22.0, spicyLevel = 1, prepTimeMinutes = 20, allergenTagsCsv = "Dairy,Gluten"),
+            MenuNutritionEntity("m_2", 850, 68.0, 8.0, 58.0, spicyLevel = 0, prepTimeMinutes = 25, allergenTagsCsv = "None"),
+            MenuNutritionEntity("m_4", 620, 8.0, 75.0, 32.0, spicyLevel = 0, prepTimeMinutes = 15, allergenTagsCsv = "Dairy,Eggs,Gluten")
+        )
+
+        val seedVariants = listOf(
+            MenuVariantEntity("var_1", "m_2", "8 oz Regular Cut", 0.0),
+            MenuVariantEntity("var_2", "m_2", "12 oz King Cut", 18.0)
+        )
+
+        val seedAddons = listOf(
+            MenuAddonEntity("add_1", "m_1", "Shaved Black Truffle", 8.0),
+            MenuAddonEntity("add_2", "m_1", "Aged Parmesan Crisp", 4.0)
+        )
+
+        val seedCrm = listOf(
+            CustomerCrmEntity(
+                userId = "usr_1001",
+                name = "Sophia Martinez",
+                phone = "+1 (212) 555-8821",
+                email = "sophia.m@gmail.com",
+                favoriteCuisine = "Modern European & French",
+                favoriteDishes = "Charred Wagyu Ribeye, Molten Lava Cake",
+                foodAllergies = "Peanuts, Shellfish",
+                preferredTable = "Table 14 (Window Rooftop)",
+                preferredWaiter = "Chef Antoine",
+                visitCount = 14,
+                totalSpend = 1680.0,
+                avgBill = 120.0,
+                lastVisitDate = "2026-07-28",
+                membershipLevel = "Gold VIP",
+                birthday = "September 14",
+                anniversary = "October 22",
+                specialNotes = "Prefers sparkling water with lemon. Celebration guest.",
+                segmentTag = "VIP"
+            ),
+            CustomerCrmEntity(
+                userId = "usr_1002",
+                name = "Marcus Vance (Google Corp)",
+                phone = "+1 (212) 555-9940",
+                email = "marcus.vance@techcorp.com",
+                favoriteCuisine = "Pan-Asian & Teppanyaki",
+                favoriteDishes = "Dragon Roll Platter",
+                foodAllergies = "None",
+                preferredTable = "Private Booth 4",
+                preferredWaiter = "Sarah",
+                visitCount = 22,
+                totalSpend = 3450.0,
+                avgBill = 156.0,
+                lastVisitDate = "2026-08-01",
+                membershipLevel = "Platinum VIP",
+                birthday = "June 05",
+                anniversary = "N/A",
+                specialNotes = "Corporate Dining card holder. Requires detailed invoices.",
+                segmentTag = "High Spender"
+            )
+        )
+
+        val seedCompany = CompanyEntity("comp_1", "Nexus Global Tech", 15000.0, 20000.0, "corporate@nexusglobal.com")
+        val seedDepartments = listOf(
+            CorporateDepartmentEntity("dept_1", "comp_1", "Executive & Leadership", 8000.0, 2400.0),
+            CorporateDepartmentEntity("dept_2", "comp_1", "Engineering & Product", 7000.0, 1800.0)
+        )
+        val seedEmployees = listOf(
+            CorporateEmployeeEntity("emp_1", "comp_1", "dept_1", "Marcus Vance", "marcus.vance@nexusglobal.com", 1000.0, 320.0, isManager = true),
+            CorporateEmployeeEntity("emp_2", "comp_1", "dept_2", "Elena Rostova", "elena.r@nexusglobal.com", 600.0, 150.0, isManager = false)
+        )
+        val seedApprovals = listOf(
+            CorporateApprovalEntity("app_1", "comp_1", "Marcus Vance", 240.0, "Aura Fine Dining & Lounge", "2026-08-01", "APPROVED")
+        )
+
         restaurantDao.insertRestaurants(seedRestaurants)
         menuItemDao.insertMenuItems(seedMenu)
         offerDao.insertOffers(seedOffers)
@@ -355,5 +624,19 @@ class DineReserveRepository(
         favoriteDao.addFavorite(FavoriteEntity("rest_1"))
         favoriteDao.addFavorite(FavoriteEntity("rest_4"))
         seedNotifications.forEach { notificationDao.insertNotification(it) }
+
+        // Seed new module entries
+        seedWaitlist.forEach { waitlistDao.insertWaitlistEntry(it) }
+        diningSessionDao.insertSession(seedDiningSession)
+        seedDiningOrders.forEach { diningOrderDao.insertOrderItem(it) }
+        seedNutrition.forEach { digitalMenuDao.insertNutrition(it) }
+        seedVariants.forEach { digitalMenuDao.insertVariant(it) }
+        seedAddons.forEach { digitalMenuDao.insertAddon(it) }
+        crmDao.insertCustomerProfiles(seedCrm)
+        corporateDao.insertCompany(seedCompany)
+        corporateDao.insertDepartments(seedDepartments)
+        corporateDao.insertEmployees(seedEmployees)
+        seedApprovals.forEach { corporateDao.insertApproval(it) }
     }
 }
+

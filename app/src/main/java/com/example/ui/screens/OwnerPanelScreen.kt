@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -68,10 +69,13 @@ fun OwnerPanelScreen(
     onAddMenuItem: (name: String, desc: String, category: String, price: Double, isVeg: Boolean) -> Unit,
     onDeleteMenuItem: (String) -> Unit,
     onCreateOffer: (title: String, type: String, discountPct: Int, maxDiscount: Double) -> Unit,
-    onOwnerReply: (reviewId: String, reply: String) -> Unit
+    onOwnerReply: (reviewId: String, reply: String) -> Unit,
+    onOpenMenuBuilder: () -> Unit = {},
+    onOpenCrm: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Reservations", "Menu Manager", "Offer Rules", "Analytics")
+    val tabs = listOf("Operations", "Table Mgmt (Live Floor)", "Reservations", "Menu Manager", "Offer Rules", "Analytics")
+    var showVipAlert by remember { mutableStateOf(true) }
 
     // Form states
     var newDishName by remember { mutableStateOf("") }
@@ -91,15 +95,21 @@ fun OwnerPanelScreen(
         // Owner Header Banner
         Surface(color = DarkSurface, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Store, contentDescription = "Owner", tint = GoldPrimary)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "RESTAURANT OWNER CONSOLE",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = GoldPrimary
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Store, contentDescription = "Owner", tint = GoldPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "RESTAURANT OWNER CONSOLE",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldPrimary
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -108,6 +118,72 @@ fun OwnerPanelScreen(
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+
+                // Enterprise Module Shortcuts for Owner
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onOpenMenuBuilder,
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color.Black),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Digital Menu Builder", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = onOpenCrm,
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color.Black),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Guest CRM Hub", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                // VIP RECOGNITION LIVE POPUP ALERT CARD
+                if (showVipAlert) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        color = Color(0xFF451A03),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, GoldPrimary),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("vip_recognition_alert_card")
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("👑 PLATINUM VIP CHECK-IN DETECTED", fontSize = 11.sp, fontWeight = FontWeight.Black, color = GoldPrimary)
+                                }
+                                IconButton(
+                                    onClick = { showVipAlert = false },
+                                    modifier = Modifier.size(20.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.LightGray)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Sarah Jenkins • Window Booth #4", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Lifetime Visits: 18 • Spend: $2,450.00 • Fav: Truffle Tagliatelle & Wagyu", fontSize = 11.sp, color = Color.LightGray)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Surface(
+                                color = Color(0xFFEF4444).copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text("⚠ Allergy Alert: PEANUTS & SHELLFISH • Prefers Sparkling Water", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFEF4444), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -122,7 +198,7 @@ fun OwnerPanelScreen(
                     text = {
                         Text(
                             text = title,
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = if (selectedTab == idx) FontWeight.Bold else FontWeight.Normal,
                             color = if (selectedTab == idx) GoldPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -133,6 +209,208 @@ fun OwnerPanelScreen(
 
         when (selectedTab) {
             0 -> {
+                // OPERATIONS DASHBOARD VIEW
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    Text("OPERATIONS COMMAND CENTER", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Key Metrics Grid
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .weight(1f)
+                                .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Today Revenue", fontSize = 10.sp, color = Color.Gray)
+                                Text("$3,840.50", fontSize = 16.sp, fontWeight = FontWeight.Black, color = GoldPrimary)
+                                Text("+14% vs yesterday", fontSize = 9.sp, color = VegGreen)
+                            }
+                        }
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .weight(1f)
+                                .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Kitchen Load", fontSize = 10.sp, color = Color.Gray)
+                                Text("70%", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFFF59E0B))
+                                Text("14 Active Orders", fontSize = 9.sp, color = Color.LightGray)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .weight(1f)
+                                .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Table Occupancy", fontSize = 10.sp, color = Color.Gray)
+                                Text("73%", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFF0EA5E9))
+                                Text("11 of 15 Active", fontSize = 9.sp, color = Color.LightGray)
+                            }
+                        }
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .weight(1f)
+                                .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Waitlist Queue", fontSize = 10.sp, color = Color.Gray)
+                                Text("4 Groups", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFFA855F7))
+                                Text("Avg 15m wait", fontSize = 9.sp, color = Color.LightGray)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .weight(1f)
+                                .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Parking Lot", fontSize = 10.sp, color = Color.Gray)
+                                Text("70% Full", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFF10B981))
+                                Text("14 of 20 Slots", fontSize = 9.sp, color = Color.LightGray)
+                            }
+                        }
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .weight(1f)
+                                .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("No-Show Rate", fontSize = 10.sp, color = Color.Gray)
+                                Text("3.5%", fontSize = 16.sp, fontWeight = FontWeight.Black, color = VegGreen)
+                                Text("Cancel: 4.8%", fontSize = 9.sp, color = Color.LightGray)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Secondary Metrics & Satisfaction Card
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("PERFORMANCE SUMMARY", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("● Customer Satisfaction Score: 4.9 / 5.0 (98% Positive)", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("● Total Bookings Today: 22 Bookings | 16 Walk-Ins", fontSize = 12.sp, color = Color.LightGray)
+                            Text("● Average Dining Duration: 48 Minutes per table", fontSize = 12.sp, color = Color.LightGray)
+                        }
+                    }
+                }
+            }
+            1 -> {
+                // DIGITAL TWIN FLOOR MAP VIEW
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    Text("LIVE 2D DIGITAL TWIN FLOOR MAP", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Real-time table occupancy sensor stream", fontSize = 11.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val tableNodes = listOf(
+                        Triple("T-01", "Occupied", "4 Guests • 28m"),
+                        Triple("T-02", "Available", "2 Guests • Clean"),
+                        Triple("T-03", "Cleaning", "4 Guests • In Progress"),
+                        Triple("T-04", "VIP Reserved", "Booth • Sarah J."),
+                        Triple("T-05", "Occupied", "6 Guests • 45m"),
+                        Triple("T-06", "Available", "2 Guests • Open"),
+                        Triple("T-07", "Occupied", "2 Guests • 12m"),
+                        Triple("T-08", "Available", "8 Guests • Patio")
+                    )
+
+                    val columns = 2
+                    tableNodes.chunked(columns).forEach { rowTables ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowTables.forEach { (tNo, state, desc) ->
+                                val (badgeColor, borderColor) = when (state) {
+                                    "Available" -> Pair(Color(0xFF10B981), Color(0xFF10B981).copy(alpha = 0.5f))
+                                    "Occupied" -> Pair(Color(0xFFEF4444), Color(0xFFEF4444).copy(alpha = 0.5f))
+                                    "Cleaning" -> Pair(Color(0xFF0EA5E9), Color(0xFF0EA5E9).copy(alpha = 0.5f))
+                                    else -> Pair(GoldPrimary, GoldPrimary.copy(alpha = 0.5f))
+                                }
+
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .border(1.5.dp, borderColor, RoundedCornerShape(12.dp))
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(tNo, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                            Surface(
+                                                color = badgeColor.copy(alpha = 0.2f),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(state, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = badgeColor, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(desc, fontSize = 11.sp, color = Color.LightGray)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            2 -> {
                 // Reservations
                 LazyColumn(
                     modifier = Modifier.padding(16.dp),

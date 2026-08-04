@@ -120,7 +120,171 @@ data class UserNotificationEntity(
     @PrimaryKey val id: String,
     val title: String,
     val message: String,
-    val category: String, // BOOKING, OFFER, MEMBERSHIP, WALLET
+    val category: String, // BOOKING, OFFER, MEMBERSHIP, WALLET, WAITLIST, QR_DINING
     val timestampString: String,
     val isRead: Boolean = false
 )
+
+// --- MODULE 1: SMART WAITLIST ENTITIES ---
+@Entity(tableName = "waitlist_entries")
+data class WaitlistEntity(
+    @PrimaryKey val id: String,
+    val restaurantId: String,
+    val restaurantName: String,
+    val userId: String,
+    val userName: String,
+    val guestCount: Int,
+    val requestedDate: String,
+    val requestedTime: String,
+    val priorityLevel: String = "STANDARD", // STANDARD, VIP, GOLD
+    val status: String = "WAITING", // WAITING, NOTIFIED, ACCEPTED, EXPIRED, CANCELLED
+    val expiresAtTimestamp: Long = 0L,
+    val notifiedAtTimestamp: Long = 0L,
+    val acceptedAtTimestamp: Long = 0L,
+    val createdAtTimestamp: Long = System.currentTimeMillis(),
+    val estimatedWaitMinutes: Int = 15,
+    val queuePosition: Int = 1
+)
+
+// --- MODULE 2: QR DINING EXPERIENCE ENTITIES ---
+@Entity(tableName = "dining_sessions")
+data class DiningSessionEntity(
+    @PrimaryKey val id: String,
+    val bookingId: String,
+    val restaurantId: String,
+    val restaurantName: String,
+    val tableNumber: String,
+    val status: String = "ACTIVE", // ACTIVE, CHECKED_OUT
+    val startTimeTimestamp: Long = System.currentTimeMillis(),
+    val totalBillAmount: Double = 0.0,
+    val isPaid: Boolean = false
+)
+
+@Entity(tableName = "dining_order_items")
+data class DiningOrderItemEntity(
+    @PrimaryKey val id: String,
+    val sessionId: String,
+    val menuItemId: String,
+    val itemName: String,
+    val price: Double,
+    val quantity: Int,
+    val status: String = "ACCEPTED", // ACCEPTED, PREPARING, READY, SERVED
+    val specialNotes: String = "",
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "service_requests")
+data class ServiceRequestEntity(
+    @PrimaryKey val id: String,
+    val sessionId: String,
+    val tableNumber: String,
+    val requestType: String, // WAITER, WATER, BILL, SPLIT_BILL, CLEANING
+    val status: String = "PENDING", // PENDING, FULFILLED
+    val note: String = "",
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+// --- MODULE 3: DIGITAL MENU BUILDER EXTENSIONS ---
+@Entity(tableName = "menu_media")
+data class MenuMediaEntity(
+    @PrimaryKey val id: String,
+    val menuItemId: String,
+    val mediaType: String, // IMAGE, VIDEO, GIF, 360_VIEW
+    val mediaUrl: String,
+    val title: String = ""
+)
+
+@Entity(tableName = "menu_nutrition")
+data class MenuNutritionEntity(
+    @PrimaryKey val menuItemId: String,
+    val calories: Int,
+    val proteinGrams: Double,
+    val carbsGrams: Double,
+    val fatGrams: Double,
+    val spicyLevel: Int = 0, // 0 to 3 chili peppers
+    val prepTimeMinutes: Int = 15,
+    val allergenTagsCsv: String = "Gluten,Dairy,Nuts"
+)
+
+@Entity(tableName = "menu_variants")
+data class MenuVariantEntity(
+    @PrimaryKey val id: String,
+    val menuItemId: String,
+    val variantName: String, // e.g. "Small", "Large", "Single Shot"
+    val priceAdjustment: Double
+)
+
+@Entity(tableName = "menu_addons")
+data class MenuAddonEntity(
+    @PrimaryKey val id: String,
+    val menuItemId: String,
+    val addonName: String, // e.g. "Extra Cheese", "Truffle Dip"
+    val price: Double
+)
+
+// --- MODULE 4: RESTAURANT CRM ENTITIES ---
+@Entity(tableName = "customer_crm")
+data class CustomerCrmEntity(
+    @PrimaryKey val userId: String,
+    val name: String,
+    val phone: String,
+    val email: String,
+    val favoriteCuisine: String,
+    val favoriteDishes: String,
+    val foodAllergies: String,
+    val preferredTable: String,
+    val preferredWaiter: String,
+    val visitCount: Int,
+    val totalSpend: Double,
+    val avgBill: Double,
+    val lastVisitDate: String,
+    val membershipLevel: String,
+    val birthday: String,
+    val anniversary: String,
+    val specialNotes: String,
+    val segmentTag: String = "VIP" // VIP, High Spender, Frequent Visitor, Inactive, Corporate, Birthday
+)
+
+// --- MODULE 5: CORPORATE DINING ENTITIES ---
+@Entity(tableName = "corporate_companies")
+data class CompanyEntity(
+    @PrimaryKey val id: String,
+    val companyName: String,
+    val corporateWalletBalance: Double,
+    val monthlyBudget: Double,
+    val adminEmail: String
+)
+
+@Entity(tableName = "corporate_departments")
+data class CorporateDepartmentEntity(
+    @PrimaryKey val id: String,
+    val companyId: String,
+    val departmentName: String,
+    val allocatedBudget: Double,
+    val spentAmount: Double = 0.0
+)
+
+@Entity(tableName = "corporate_employees")
+data class CorporateEmployeeEntity(
+    @PrimaryKey val id: String,
+    val companyId: String,
+    val departmentId: String,
+    val employeeName: String,
+    val employeeEmail: String,
+    val monthlyLimit: Double,
+    val spentThisMonth: Double = 0.0,
+    val isManager: Boolean = false
+)
+
+@Entity(tableName = "corporate_approvals")
+data class CorporateApprovalEntity(
+    @PrimaryKey val id: String,
+    val companyId: String,
+    val employeeName: String,
+    val amount: Double,
+    val restaurantName: String,
+    val bookingDate: String,
+    val status: String = "PENDING", // PENDING, APPROVED, REJECTED
+    val createdAt: Long = System.currentTimeMillis()
+)
+

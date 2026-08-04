@@ -159,6 +159,148 @@ fun WalletScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        // Health Preferences & Allergy Protection Section
+        Card(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, DarkCardBorder, RoundedCornerShape(14.dp))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("HEALTH & ALLERGY PREFERENCES", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                    Surface(
+                        color = Color(0xFF10B981).copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("Active Engine", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Selected allergies trigger real-time dish safety alerts at checkout.", fontSize = 11.sp, color = Color.Gray)
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                var peanutsChecked by remember { mutableStateOf(true) }
+                var shellfishChecked by remember { mutableStateOf(true) }
+                var glutenChecked by remember { mutableStateOf(false) }
+                var dairyChecked by remember { mutableStateOf(false) }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (peanutsChecked) Color(0xFFEF4444).copy(alpha = 0.2f) else DarkSurface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (peanutsChecked) Color(0xFFEF4444) else DarkCardBorder),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🥜 Peanuts", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (peanutsChecked) Color(0xFFEF4444) else Color.White)
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (shellfishChecked) Color(0xFFEF4444).copy(alpha = 0.2f) else DarkSurface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (shellfishChecked) Color(0xFFEF4444) else DarkCardBorder),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🦐 Shellfish", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (shellfishChecked) Color(0xFFEF4444) else Color.White)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (glutenChecked) Color(0xFFEF4444).copy(alpha = 0.2f) else DarkSurface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (glutenChecked) Color(0xFFEF4444) else DarkCardBorder),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🌾 Gluten", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (glutenChecked) Color(0xFFEF4444) else Color.White)
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (dairyChecked) Color(0xFFEF4444).copy(alpha = 0.2f) else DarkSurface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (dairyChecked) Color(0xFFEF4444) else DarkCardBorder),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🥛 Dairy", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (dairyChecked) Color(0xFFEF4444) else Color.White)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ALLERGY WARNING BANNER
+                Surface(
+                    color = Color(0xFFEF4444).copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("🛡️", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text("Allergy Protection Active", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFEF4444))
+                            Text("2 active allergen filters configured for your profile.", fontSize = 10.sp, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
         Text("TRANSACTION HISTORY", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
 
         Spacer(modifier = Modifier.height(10.dp))

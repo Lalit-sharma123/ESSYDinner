@@ -19,6 +19,8 @@ import com.example.ui.components.TopRoleHeaderBar
 import com.example.ui.screens.AdminPanelScreen
 import com.example.ui.screens.BookingConfirmationScreen
 import com.example.ui.screens.BookingModalScreen
+import com.example.ui.screens.CorporateDiningScreen
+import com.example.ui.screens.DigitalMenuBuilderScreen
 import com.example.ui.screens.FavoritesReviewsScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MembershipScreen
@@ -26,8 +28,11 @@ import com.example.ui.screens.MyBookingsScreen
 import com.example.ui.screens.NotificationsScreen
 import com.example.ui.screens.OffersHubScreen
 import com.example.ui.screens.OwnerPanelScreen
+import com.example.ui.screens.QrDiningPortalScreen
+import com.example.ui.screens.RestaurantCrmScreen
 import com.example.ui.screens.RestaurantDetailScreen
 import com.example.ui.screens.SearchScreen
+import com.example.ui.screens.WaitlistScreen
 import com.example.ui.screens.WalletScreen
 import com.example.ui.theme.DineReserveTheme
 import com.example.ui.viewmodel.AppRoleMode
@@ -52,7 +57,14 @@ class MainActivity : ComponentActivity() {
             walletDao = database.walletDao(),
             reviewDao = database.reviewDao(),
             favoriteDao = database.favoriteDao(),
-            notificationDao = database.notificationDao()
+            notificationDao = database.notificationDao(),
+            waitlistDao = database.waitlistDao(),
+            diningSessionDao = database.diningSessionDao(),
+            diningOrderDao = database.diningOrderDao(),
+            serviceRequestDao = database.serviceRequestDao(),
+            digitalMenuDao = database.digitalMenuDao(),
+            crmDao = database.crmDao(),
+            corporateDao = database.corporateDao()
         )
 
         viewModel = DineReserveViewModel(repository)
@@ -89,6 +101,23 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
 
     val membershipTier by viewModel.userMembershipTier.collectAsStateWithLifecycle()
     val rewardPoints by viewModel.rewardPoints.collectAsStateWithLifecycle()
+
+    // Module 1, 2, 3, 4, 5 State Collections
+    val allWaitlistEntries by viewModel.allWaitlistEntries.collectAsStateWithLifecycle()
+    val waitlistCountdownSeconds by viewModel.waitlistCountdownSeconds.collectAsStateWithLifecycle()
+
+    val activeDiningSession by viewModel.activeDiningSession.collectAsStateWithLifecycle()
+    val activeSessionOrders by viewModel.activeSessionOrders.collectAsStateWithLifecycle()
+    val activeSessionRequests by viewModel.activeSessionRequests.collectAsStateWithLifecycle()
+
+    val crmCustomerProfiles by viewModel.crmCustomerProfiles.collectAsStateWithLifecycle()
+    val crmSegmentFilter by viewModel.crmSegmentFilter.collectAsStateWithLifecycle()
+    val crmSearchQuery by viewModel.crmSearchQuery.collectAsStateWithLifecycle()
+
+    val corporateCompany by viewModel.corporateCompany.collectAsStateWithLifecycle()
+    val corporateDepartments by viewModel.corporateDepartments.collectAsStateWithLifecycle()
+    val corporateEmployees by viewModel.corporateEmployees.collectAsStateWithLifecycle()
+    val corporateApprovals by viewModel.corporateApprovals.collectAsStateWithLifecycle()
 
     val unreadNotifications = notifications.count { !it.isRead }
 
@@ -160,7 +189,12 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
                             onBookClick = { viewModel.startBooking(it) },
                             onSearchClick = { viewModel.navigateToScreen(CustomerScreen.SEARCH) },
                             onOffersHubClick = { viewModel.navigateToScreen(CustomerScreen.OFFERS_HUB) },
-                            onMembershipClick = { viewModel.navigateToScreen(CustomerScreen.MEMBERSHIP) }
+                            onMembershipClick = { viewModel.navigateToScreen(CustomerScreen.MEMBERSHIP) },
+                            onWaitlistClick = { viewModel.navigateToScreen(CustomerScreen.WAITLIST_HUB) },
+                            onQrDiningClick = { viewModel.navigateToScreen(CustomerScreen.QR_DINING_PORTAL) },
+                            onCorporateClick = { viewModel.navigateToScreen(CustomerScreen.CORPORATE_DINING) },
+                            onCrmClick = { viewModel.navigateToScreen(CustomerScreen.RESTAURANT_CRM) },
+                            onMenuBuilderClick = { viewModel.navigateToScreen(CustomerScreen.DIGITAL_MENU_BUILDER) }
                         )
                         CustomerScreen.SEARCH -> SearchScreen(
                             searchQuery = searchQuery,
@@ -189,6 +223,10 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
                                     onBookClick = { viewModel.startBooking(it) },
                                     onSubmitReview = { restId, rating, comment ->
                                         viewModel.submitReview(restId, rating, comment)
+                                    },
+                                    onJoinWaitlist = { restId, restName, partySize, date, timeSlot ->
+                                        viewModel.joinWaitlist(restId, restName, partySize, date, timeSlot)
+                                        viewModel.navigateToScreen(CustomerScreen.WAITLIST_HUB)
                                     }
                                 )
                             }
@@ -239,6 +277,63 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
                             notifications = notifications,
                             onMarkAsRead = { viewModel.markNotificationAsRead(it) }
                         )
+                        CustomerScreen.WAITLIST_HUB -> WaitlistScreen(
+                            waitlistEntries = allWaitlistEntries,
+                            countdownSeconds = waitlistCountdownSeconds,
+                            onAcceptOffer = { viewModel.acceptWaitlistOffer(it) },
+                            onCancelWaitlist = { viewModel.cancelWaitlist(it) },
+                            onBackClick = { viewModel.navigateToScreen(CustomerScreen.HOME) }
+                        )
+                        CustomerScreen.QR_DINING_PORTAL -> QrDiningPortalScreen(
+                            session = activeDiningSession,
+                            menuItems = detailMenuItems,
+                            placedOrders = activeSessionOrders,
+                            serviceRequests = activeSessionRequests,
+                            onPlaceOrder = { id, name, price, qty, notes ->
+                                viewModel.placeDiningOrder(id, name, price, qty, notes)
+                            },
+                            onRequestService = { type, note ->
+                                viewModel.requestTableService(type, note)
+                            },
+                            onCheckout = { viewModel.checkoutDiningSession() },
+                            onBackClick = { viewModel.navigateToScreen(CustomerScreen.HOME) }
+                        )
+                        CustomerScreen.DIGITAL_MENU_BUILDER -> DigitalMenuBuilderScreen(
+                            menuItems = detailMenuItems,
+                            onSaveNutrition = { id, cal, pro, carb, fat, spicy, prep, alg ->
+                                viewModel.saveMenuNutrition(id, cal, pro, carb, fat, spicy, prep, alg)
+                            },
+                            onAddVariant = { id, name, adj ->
+                                viewModel.addMenuVariant(id, name, adj)
+                            },
+                            onAddAddon = { id, name, price ->
+                                viewModel.addMenuAddon(id, name, price)
+                            },
+                            onBackClick = { viewModel.navigateToScreen(CustomerScreen.HOME) }
+                        )
+                        CustomerScreen.RESTAURANT_CRM -> RestaurantCrmScreen(
+                            customerProfiles = crmCustomerProfiles,
+                            selectedSegment = crmSegmentFilter,
+                            searchQuery = crmSearchQuery,
+                            onSegmentSelected = { viewModel.setCrmSegmentFilter(it) },
+                            onSearchQueryChange = { viewModel.setCrmSearchQuery(it) },
+                            onUpdateNotes = { userId, notes -> viewModel.updateCrmNotes(userId, notes) },
+                            onBackClick = { viewModel.navigateToScreen(CustomerScreen.HOME) }
+                        )
+                        CustomerScreen.CORPORATE_DINING -> CorporateDiningScreen(
+                            company = corporateCompany,
+                            departments = corporateDepartments,
+                            employees = corporateEmployees,
+                            approvals = corporateApprovals,
+                            onAddFunds = { viewModel.addCorporateWalletFunds(it) },
+                            onRequestApproval = { emp, amt, rest, dt ->
+                                viewModel.requestCorporateApproval(emp, amt, rest, dt)
+                            },
+                            onUpdateApprovalStatus = { id, status ->
+                                viewModel.updateCorporateApprovalStatus(id, status)
+                            },
+                            onBackClick = { viewModel.navigateToScreen(CustomerScreen.HOME) }
+                        )
                     }
                 }
                 AppRoleMode.RESTAURANT_OWNER -> {
@@ -257,7 +352,9 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
                             },
                             onOwnerReply = { reviewId, reply ->
                                 viewModel.addOwnerReply(reviewId, reply)
-                            }
+                            },
+                            onOpenMenuBuilder = { viewModel.navigateToScreen(CustomerScreen.DIGITAL_MENU_BUILDER) },
+                            onOpenCrm = { viewModel.navigateToScreen(CustomerScreen.RESTAURANT_CRM) }
                         )
                     }
                 }

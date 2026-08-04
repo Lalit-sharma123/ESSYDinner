@@ -6,12 +6,25 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.data.model.BookingEntity
+import com.example.data.model.CompanyEntity
+import com.example.data.model.CorporateApprovalEntity
+import com.example.data.model.CorporateDepartmentEntity
+import com.example.data.model.CorporateEmployeeEntity
+import com.example.data.model.CustomerCrmEntity
+import com.example.data.model.DiningOrderItemEntity
+import com.example.data.model.DiningSessionEntity
 import com.example.data.model.FavoriteEntity
 import com.example.data.model.MenuItemEntity
+import com.example.data.model.MenuAddonEntity
+import com.example.data.model.MenuMediaEntity
+import com.example.data.model.MenuNutritionEntity
+import com.example.data.model.MenuVariantEntity
 import com.example.data.model.OfferEntity
 import com.example.data.model.RestaurantEntity
 import com.example.data.model.ReviewEntity
+import com.example.data.model.ServiceRequestEntity
 import com.example.data.model.UserNotificationEntity
+import com.example.data.model.WaitlistEntity
 import com.example.data.model.WalletTransactionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -128,3 +141,136 @@ interface NotificationDao {
     @Query("UPDATE notifications SET isRead = 1 WHERE id = :id")
     suspend fun markAsRead(id: String)
 }
+
+@Dao
+interface WaitlistDao {
+    @Query("SELECT * FROM waitlist_entries ORDER BY createdAtTimestamp DESC")
+    fun getAllWaitlistEntries(): Flow<List<WaitlistEntity>>
+
+    @Query("SELECT * FROM waitlist_entries WHERE restaurantId = :restaurantId AND status IN ('WAITING', 'NOTIFIED') ORDER BY queuePosition ASC")
+    fun getActiveWaitlistForRestaurant(restaurantId: String): Flow<List<WaitlistEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWaitlistEntry(entry: WaitlistEntity)
+
+    @Query("UPDATE waitlist_entries SET status = :status, notifiedAtTimestamp = :notifiedAt, expiresAtTimestamp = :expiresAt WHERE id = :id")
+    suspend fun notifyWaitlistCustomer(id: String, status: String, notifiedAt: Long, expiresAt: Long)
+
+    @Query("UPDATE waitlist_entries SET status = :status, acceptedAtTimestamp = :acceptedAt WHERE id = :id")
+    suspend fun updateWaitlistStatus(id: String, status: String, acceptedAt: Long = System.currentTimeMillis())
+}
+
+@Dao
+interface DiningSessionDao {
+    @Query("SELECT * FROM dining_sessions WHERE status = 'ACTIVE' LIMIT 1")
+    fun getActiveSession(): Flow<DiningSessionEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSession(session: DiningSessionEntity)
+
+    @Query("UPDATE dining_sessions SET status = 'CHECKED_OUT', isPaid = 1 WHERE id = :sessionId")
+    suspend fun checkoutSession(sessionId: String)
+}
+
+@Dao
+interface DiningOrderDao {
+    @Query("SELECT * FROM dining_order_items WHERE sessionId = :sessionId ORDER BY timestamp ASC")
+    fun getOrdersForSession(sessionId: String): Flow<List<DiningOrderItemEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrderItem(item: DiningOrderItemEntity)
+
+    @Query("UPDATE dining_order_items SET status = :status WHERE id = :id")
+    suspend fun updateOrderStatus(id: String, status: String)
+}
+
+@Dao
+interface ServiceRequestDao {
+    @Query("SELECT * FROM service_requests WHERE sessionId = :sessionId ORDER BY timestamp DESC")
+    fun getRequestsForSession(sessionId: String): Flow<List<ServiceRequestEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertServiceRequest(request: ServiceRequestEntity)
+
+    @Query("UPDATE service_requests SET status = 'FULFILLED' WHERE id = :id")
+    suspend fun fulfillRequest(id: String)
+}
+
+@Dao
+interface DigitalMenuDao {
+    @Query("SELECT * FROM menu_media WHERE menuItemId = :menuItemId")
+    fun getMediaForMenuItem(menuItemId: String): Flow<List<MenuMediaEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMedia(media: MenuMediaEntity)
+
+    @Query("SELECT * FROM menu_nutrition WHERE menuItemId = :menuItemId")
+    fun getNutritionForMenuItem(menuItemId: String): Flow<MenuNutritionEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNutrition(nutrition: MenuNutritionEntity)
+
+    @Query("SELECT * FROM menu_variants WHERE menuItemId = :menuItemId")
+    fun getVariantsForMenuItem(menuItemId: String): Flow<List<MenuVariantEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertVariant(variant: MenuVariantEntity)
+
+    @Query("SELECT * FROM menu_addons WHERE menuItemId = :menuItemId")
+    fun getAddonsForMenuItem(menuItemId: String): Flow<List<MenuAddonEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAddon(addon: MenuAddonEntity)
+}
+
+@Dao
+interface CrmDao {
+    @Query("SELECT * FROM customer_crm ORDER BY totalSpend DESC")
+    fun getAllCustomerProfiles(): Flow<List<CustomerCrmEntity>>
+
+    @Query("SELECT * FROM customer_crm WHERE userId = :userId")
+    fun getCustomerProfile(userId: String): Flow<CustomerCrmEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCustomerProfile(profile: CustomerCrmEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCustomerProfiles(profiles: List<CustomerCrmEntity>)
+
+    @Query("UPDATE customer_crm SET specialNotes = :notes WHERE userId = :userId")
+    suspend fun updateSpecialNotes(userId: String, notes: String)
+}
+
+@Dao
+interface CorporateDao {
+    @Query("SELECT * FROM corporate_companies LIMIT 1")
+    fun getCompany(): Flow<CompanyEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCompany(company: CompanyEntity)
+
+    @Query("SELECT * FROM corporate_departments")
+    fun getDepartments(): Flow<List<CorporateDepartmentEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDepartments(departments: List<CorporateDepartmentEntity>)
+
+    @Query("SELECT * FROM corporate_employees")
+    fun getEmployees(): Flow<List<CorporateEmployeeEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEmployees(employees: List<CorporateEmployeeEntity>)
+
+    @Query("SELECT * FROM corporate_approvals ORDER BY createdAt DESC")
+    fun getApprovals(): Flow<List<CorporateApprovalEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertApproval(approval: CorporateApprovalEntity)
+
+    @Query("UPDATE corporate_approvals SET status = :status WHERE id = :id")
+    suspend fun updateApprovalStatus(id: String, status: String)
+
+    @Query("UPDATE corporate_companies SET corporateWalletBalance = corporateWalletBalance + :amount WHERE id = :companyId")
+    suspend fun addCorporateWalletBalance(companyId: String, amount: Double)
+}
+
