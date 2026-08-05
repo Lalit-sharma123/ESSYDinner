@@ -246,14 +246,109 @@ model DiningOrderItem {
   status             OrderStatus       @default(PLACED)
 }
 
+enum ServiceRequestType {
+  MENU_ITEM
+  WATER
+  SOFT_DRINK
+  EXTRA_PLATE
+  EXTRA_SPOON
+  NAPKIN
+  TISSUE
+  ICE
+  SAUCE
+  CALL_WAITER
+  REQUEST_BILL
+  SPECIAL_REQUEST
+}
+
+enum TaskStatus {
+  PENDING
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  READY_TO_SERVE
+  COMPLETED
+  CANCELLED
+}
+
 model ServiceRequest {
-  id                 String            @id @default(uuid())
+  id                 String               @id @default(uuid())
+  restaurantId       String               @default("rest_1")
+  bookingId          String               @default("")
   sessionId          String
-  session            DiningSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  requestType        String
-  note               String            @default("")
-  isResolved         Boolean           @default(false)
-  createdAt          DateTime          @default(now())
+  session            DiningSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  customerId         String               @default("")
+  tableId            String               @default("")
+  tableNumber        String               @default("T-01")
+  requestType        ServiceRequestType   @default(CALL_WAITER)
+  status             TaskStatus           @default(PENDING)
+  priority           String               @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  note               String               @default("")
+  isResolved         Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  items              ServiceRequestItem[]
+  staffTasks         StaffTask[]
+}
+
+model ServiceRequestItem {
+  id                  String         @id @default(uuid())
+  serviceRequestId    String
+  serviceRequest      ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  menuItemId          String         @default("")
+  itemName            String
+  quantity            Int            @default(1)
+  price               Float          @default(0.0)
+  specialInstructions String         @default("")
+}
+
+model StaffTask {
+  id                      String            @id @default(uuid())
+  restaurantId            String            @default("rest_1")
+  serviceRequestId        String
+  serviceRequest          ServiceRequest    @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  assignedStaffId         String            @default("")
+  assignedStaffName       String            @default("Unassigned")
+  taskStatus              TaskStatus        @default(PENDING)
+  acceptedAt              DateTime?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  estimatedCompletionTime Int               @default(5) // in minutes
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  assignments             StaffAssignment[]
+  history                 TaskHistory[]
+}
+
+model StaffAssignment {
+  id         String    @id @default(uuid())
+  taskId     String
+  staffTask  StaffTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  staffId    String
+  assignedAt DateTime  @default(now())
+  role       String    @default("WAITER")
+}
+
+model TaskHistory {
+  id             String     @id @default(uuid())
+  taskId         String
+  staffTask      StaffTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  previousStatus TaskStatus
+  newStatus      TaskStatus
+  changedBy      String     @default("SYSTEM")
+  timestamp      DateTime   @default(now())
+}
+
+model StaffStatus {
+  id               String   @id @default(uuid())
+  staffId          String   @unique
+  staffName        String   @default("Staff Member")
+  online           Boolean  @default(true)
+  busy             Boolean  @default(false)
+  currentTaskCount Int      @default(0)
+  lastSeen         DateTime @default(now())
 }
 
 model CustomerCrm {

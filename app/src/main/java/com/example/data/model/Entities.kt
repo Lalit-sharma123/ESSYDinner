@@ -178,10 +178,43 @@ data class ServiceRequestEntity(
     @PrimaryKey val id: String,
     val sessionId: String,
     val tableNumber: String,
-    val requestType: String, // WAITER, WATER, BILL, SPLIT_BILL, CLEANING
-    val status: String = "PENDING", // PENDING, FULFILLED
+    val requestType: String, // WAITER, WATER, SOFT_DRINK, EXTRA_PLATE, EXTRA_SPOON, NAPKIN, TISSUE, ICE, SAUCE, CALL_WAITER, REQUEST_BILL, SPECIAL_REQUEST, MENU_ITEM
+    val status: String = "PENDING", // PENDING, ASSIGNED, ACCEPTED, IN_PROGRESS, READY_TO_SERVE, COMPLETED, CANCELLED
+    val priority: String = "NORMAL",
     val note: String = "",
+    val itemsSummary: String = "",
     val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "staff_tasks")
+data class StaffTaskEntity(
+    @PrimaryKey val id: String,
+    val serviceRequestId: String,
+    val restaurantId: String = "rest_1",
+    val tableNumber: String = "T-01",
+    val customerName: String = "Guest",
+    val bookingId: String = "B-101",
+    val diningSessionId: String = "session_123",
+    val requestType: String = "WATER",
+    val requestedItemsSummary: String = "Water x1",
+    val quantity: Int = 1,
+    val priority: String = "NORMAL",
+    val taskStatus: String = "PENDING", // PENDING, ASSIGNED, ACCEPTED, IN_PROGRESS, READY_TO_SERVE, COMPLETED, CANCELLED
+    val assignedStaffId: String = "staff_1",
+    val assignedStaffName: String = "Alex Waiter",
+    val createdAtTimestamp: Long = System.currentTimeMillis(),
+    val acceptedAtTimestamp: Long = 0L,
+    val startedAtTimestamp: Long = 0L,
+    val completedAtTimestamp: Long = 0L,
+    val estimatedMinutes: Int = 5
+)
+
+data class ServiceRequestItemData(
+    val menuItemId: String = "",
+    val itemName: String,
+    val quantity: Int = 1,
+    val price: Double = 0.0,
+    val specialInstructions: String = ""
 )
 
 // --- MODULE 3: DIGITAL MENU BUILDER EXTENSIONS ---

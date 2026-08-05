@@ -23,6 +23,7 @@ import com.example.data.model.OfferEntity
 import com.example.data.model.RestaurantEntity
 import com.example.data.model.ReviewEntity
 import com.example.data.model.ServiceRequestEntity
+import com.example.data.model.StaffTaskEntity
 import com.example.data.model.UserNotificationEntity
 import com.example.data.model.WaitlistEntity
 import com.example.data.model.WalletTransactionEntity
@@ -189,11 +190,38 @@ interface ServiceRequestDao {
     @Query("SELECT * FROM service_requests WHERE sessionId = :sessionId ORDER BY timestamp DESC")
     fun getRequestsForSession(sessionId: String): Flow<List<ServiceRequestEntity>>
 
+    @Query("SELECT * FROM service_requests ORDER BY timestamp DESC")
+    fun getAllRequests(): Flow<List<ServiceRequestEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertServiceRequest(request: ServiceRequestEntity)
 
-    @Query("UPDATE service_requests SET status = 'FULFILLED' WHERE id = :id")
+    @Query("UPDATE service_requests SET status = :status WHERE id = :id")
+    suspend fun updateRequestStatus(id: String, status: String)
+
+    @Query("UPDATE service_requests SET status = 'COMPLETED' WHERE id = :id")
     suspend fun fulfillRequest(id: String)
+}
+
+@Dao
+interface StaffTaskDao {
+    @Query("SELECT * FROM staff_tasks ORDER BY createdAtTimestamp DESC")
+    fun getAllTasks(): Flow<List<StaffTaskEntity>>
+
+    @Query("SELECT * FROM staff_tasks WHERE taskStatus = :status ORDER BY createdAtTimestamp DESC")
+    fun getTasksByStatus(status: String): Flow<List<StaffTaskEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTask(task: StaffTaskEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTasks(tasks: List<StaffTaskEntity>)
+
+    @Query("UPDATE staff_tasks SET taskStatus = :status WHERE id = :id")
+    suspend fun updateTaskStatus(id: String, status: String)
+
+    @Query("UPDATE staff_tasks SET assignedStaffId = :staffId, assignedStaffName = :staffName, taskStatus = 'ASSIGNED' WHERE id = :id")
+    suspend fun assignTask(id: String, staffId: String, staffName: String)
 }
 
 @Dao

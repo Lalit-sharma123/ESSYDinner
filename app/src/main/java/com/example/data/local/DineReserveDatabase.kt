@@ -26,6 +26,8 @@ import com.example.data.model.UserNotificationEntity
 import com.example.data.model.WaitlistEntity
 import com.example.data.model.WalletTransactionEntity
 
+import com.example.data.model.StaffTaskEntity
+
 @Database(
     entities = [
         RestaurantEntity::class,
@@ -40,6 +42,7 @@ import com.example.data.model.WalletTransactionEntity
         DiningSessionEntity::class,
         DiningOrderItemEntity::class,
         ServiceRequestEntity::class,
+        StaffTaskEntity::class,
         MenuMediaEntity::class,
         MenuNutritionEntity::class,
         MenuVariantEntity::class,
@@ -50,7 +53,7 @@ import com.example.data.model.WalletTransactionEntity
         CorporateEmployeeEntity::class,
         CorporateApprovalEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class DineReserveDatabase : RoomDatabase() {
@@ -66,6 +69,7 @@ abstract class DineReserveDatabase : RoomDatabase() {
     abstract fun diningSessionDao(): DiningSessionDao
     abstract fun diningOrderDao(): DiningOrderDao
     abstract fun serviceRequestDao(): ServiceRequestDao
+    abstract fun staffTaskDao(): StaffTaskDao
     abstract fun digitalMenuDao(): DigitalMenuDao
     abstract fun crmDao(): CrmDao
     abstract fun corporateDao(): CorporateDao

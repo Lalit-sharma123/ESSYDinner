@@ -15,6 +15,8 @@ import { ParkingModule } from './parking/parking.module';
 import { AllergensModule } from './allergens/allergens.module';
 import { OperationsModule } from './operations/operations.module';
 import { VipModule } from './vip/vip.module';
+import { ServiceRequestModule } from './service-requests/service-request.module';
+import { StaffTaskModule } from './staff-tasks/staff-task.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { VipModule } from './vip/vip.module';
     AllergensModule,
     OperationsModule,
     VipModule,
+    ServiceRequestModule,
+    StaffTaskModule,
   ],
 })
 export class AppModule {}

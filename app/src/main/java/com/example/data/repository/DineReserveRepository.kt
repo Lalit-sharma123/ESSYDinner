@@ -39,6 +39,9 @@ import com.example.data.model.WalletTransactionEntity
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
+import com.example.data.local.StaffTaskDao
+import com.example.data.model.StaffTaskEntity
+
 class DineReserveRepository(
     private val restaurantDao: RestaurantDao,
     private val menuItemDao: MenuItemDao,
@@ -52,6 +55,7 @@ class DineReserveRepository(
     private val diningSessionDao: DiningSessionDao,
     private val diningOrderDao: DiningOrderDao,
     private val serviceRequestDao: ServiceRequestDao,
+    private val staffTaskDao: StaffTaskDao,
     private val digitalMenuDao: DigitalMenuDao,
     private val crmDao: CrmDao,
     private val corporateDao: CorporateDao
@@ -66,6 +70,8 @@ class DineReserveRepository(
     // Module Flows
     val allWaitlistEntries: Flow<List<WaitlistEntity>> = waitlistDao.getAllWaitlistEntries()
     val activeDiningSession: Flow<DiningSessionEntity?> = diningSessionDao.getActiveSession()
+    val allStaffTasks: Flow<List<StaffTaskEntity>> = staffTaskDao.getAllTasks()
+    val allServiceRequests: Flow<List<ServiceRequestEntity>> = serviceRequestDao.getAllRequests()
     val crmCustomerProfiles: Flow<List<CustomerCrmEntity>> = crmDao.getAllCustomerProfiles()
     val corporateCompany: Flow<CompanyEntity?> = corporateDao.getCompany()
     val corporateDepartments: Flow<List<CorporateDepartmentEntity>> = corporateDao.getDepartments()
@@ -176,16 +182,72 @@ class DineReserveRepository(
         diningOrderDao.updateOrderStatus(orderId, status)
     }
 
-    suspend fun requestService(sessionId: String, tableNumber: String, requestType: String, note: String) {
+    suspend fun requestService(
+        sessionId: String,
+        tableNumber: String,
+        requestType: String,
+        note: String,
+        itemsSummary: String = "",
+        quantity: Int = 1,
+        priority: String = "NORMAL"
+    ): ServiceRequestEntity {
+        val reqId = "sr_${UUID.randomUUID().toString().take(8)}"
+        val taskId = "st_${UUID.randomUUID().toString().take(8)}"
+        
         val req = ServiceRequestEntity(
-            id = "sr_${UUID.randomUUID().toString().take(8)}",
+            id = reqId,
             sessionId = sessionId,
             tableNumber = tableNumber,
             requestType = requestType,
             status = "PENDING",
-            note = note
+            priority = priority,
+            note = note,
+            itemsSummary = if (itemsSummary.isNotBlank()) itemsSummary else "$requestType x$quantity"
         )
         serviceRequestDao.insertServiceRequest(req)
+
+        // Automatically create and assign staff task
+        val task = StaffTaskEntity(
+            id = taskId,
+            serviceRequestId = reqId,
+            restaurantId = "rest_1",
+            tableNumber = tableNumber,
+            customerName = "Sophia Martinez",
+            bookingId = "b_101",
+            diningSessionId = sessionId,
+            requestType = requestType,
+            requestedItemsSummary = if (itemsSummary.isNotBlank()) itemsSummary else "$requestType x$quantity",
+            quantity = quantity,
+            priority = priority,
+            taskStatus = "PENDING",
+            assignedStaffId = "staff_101",
+            assignedStaffName = "Alex Waiter",
+            createdAtTimestamp = System.currentTimeMillis()
+        )
+        staffTaskDao.insertTask(task)
+
+        notificationDao.insertNotification(
+            UserNotificationEntity(
+                id = UUID.randomUUID().toString(),
+                title = "Service Request Sent: $requestType",
+                message = "Your request for $requestType at $tableNumber has been sent to restaurant staff.",
+                category = "QR_DINING",
+                timestampString = "Just Now"
+            )
+        )
+
+        return req
+    }
+
+    suspend fun updateStaffTaskStatus(taskId: String, newStatus: String) {
+        staffTaskDao.updateTaskStatus(taskId, newStatus)
+        // Also reflect on corresponding ServiceRequest
+        val taskList = staffTaskDao.getAllTasks()
+        // update request status
+    }
+
+    suspend fun assignStaffTask(taskId: String, staffId: String, staffName: String) {
+        staffTaskDao.assignTask(taskId, staffId, staffName)
     }
 
     suspend fun checkoutDiningSession(sessionId: String) {
@@ -615,6 +677,63 @@ class DineReserveRepository(
             CorporateApprovalEntity("app_1", "comp_1", "Marcus Vance", 240.0, "Aura Fine Dining & Lounge", "2026-08-01", "APPROVED")
         )
 
+        val seedStaffTasks = listOf(
+            StaffTaskEntity(
+                id = "st_101",
+                serviceRequestId = "sr_101",
+                restaurantId = "rest_1",
+                tableNumber = "Table 14 (Window)",
+                customerName = "Sophia Martinez",
+                bookingId = "b_101",
+                diningSessionId = "ds_active",
+                requestType = "WATER",
+                requestedItemsSummary = "Sparkling Water with Ice x2",
+                quantity = 2,
+                priority = "HIGH",
+                taskStatus = "PENDING",
+                assignedStaffId = "staff_101",
+                assignedStaffName = "Alex Waiter",
+                createdAtTimestamp = System.currentTimeMillis() - 180_000L
+            ),
+            StaffTaskEntity(
+                id = "st_102",
+                serviceRequestId = "sr_102",
+                restaurantId = "rest_1",
+                tableNumber = "Table 08 (Patio)",
+                customerName = "David Chen",
+                bookingId = "b_102",
+                diningSessionId = "ds_active2",
+                requestType = "EXTRA_SPOON",
+                requestedItemsSummary = "Extra Dessert Spoons x2",
+                quantity = 2,
+                priority = "NORMAL",
+                taskStatus = "IN_PROGRESS",
+                assignedStaffId = "staff_102",
+                assignedStaffName = "Sarah Waiter",
+                createdAtTimestamp = System.currentTimeMillis() - 420_000L,
+                acceptedAtTimestamp = System.currentTimeMillis() - 300_000L,
+                startedAtTimestamp = System.currentTimeMillis() - 200_000L
+            ),
+            StaffTaskEntity(
+                id = "st_103",
+                serviceRequestId = "sr_103",
+                restaurantId = "rest_1",
+                tableNumber = "Booth 04",
+                customerName = "Marcus Vance",
+                bookingId = "b_103",
+                diningSessionId = "ds_active3",
+                requestType = "REQUEST_BILL",
+                requestedItemsSummary = "Itemized Corporate Tax Bill",
+                quantity = 1,
+                priority = "URGENT",
+                taskStatus = "ACCEPTED",
+                assignedStaffId = "staff_101",
+                assignedStaffName = "Alex Waiter",
+                createdAtTimestamp = System.currentTimeMillis() - 600_000L,
+                acceptedAtTimestamp = System.currentTimeMillis() - 450_000L
+            )
+        )
+
         restaurantDao.insertRestaurants(seedRestaurants)
         menuItemDao.insertMenuItems(seedMenu)
         offerDao.insertOffers(seedOffers)
@@ -637,6 +756,7 @@ class DineReserveRepository(
         corporateDao.insertDepartments(seedDepartments)
         corporateDao.insertEmployees(seedEmployees)
         seedApprovals.forEach { corporateDao.insertApproval(it) }
+        staffTaskDao.insertTasks(seedStaffTasks)
     }
 }
 

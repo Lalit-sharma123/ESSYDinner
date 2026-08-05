@@ -365,48 +365,172 @@ fun QrDiningPortalScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Call Staff Buttons
+                    // Call Staff & Request Items Grid
                     item {
                         Text(
-                            text = "INSTANT TABLE ASSISTANCE",
+                            text = "INSTANT TABLE ASSISTANCE & REQUESTS",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = GoldPrimary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
+
+                        // Row 1: Primary Quick Actions
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             OutlinedButton(
-                                onClick = { onRequestService("CALL_WAITER", "Call Waiter to Table") },
+                                onClick = { onRequestService("CALL_WAITER", "Call Waiter to Table 14") },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldPrimary),
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).testTag("btn_request_waiter"),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(imageVector = Icons.Default.RoomService, contentDescription = null, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Waiter", fontSize = 11.sp)
+                                Text("Call Waiter", fontSize = 11.sp)
                             }
                             OutlinedButton(
-                                onClick = { onRequestService("WATER_REFILL", "Water Refill") },
+                                onClick = { onRequestService("WATER_REFILL", "Water Refill x2") },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldPrimary),
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).testTag("btn_request_water"),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(imageVector = Icons.Default.LocalBar, contentDescription = null, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Water", fontSize = 11.sp)
+                                Text("Water Refill", fontSize = 11.sp)
                             }
                             OutlinedButton(
-                                onClick = { onRequestService("REQUEST_BILL", "Printed Bill") },
+                                onClick = { onRequestService("SOFT_DRINK", "Ice & Soft Drink") },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldPrimary),
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).testTag("btn_request_drink"),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("🥤 Soft Drink", fontSize = 11.sp)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Row 2: Secondary Quick Actions
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { onRequestService("CUTLERY", "Extra Cutlery / Spoons") },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldPrimary),
+                                modifier = Modifier.weight(1f).testTag("btn_request_cutlery"),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("🍴 Cutlery", fontSize = 11.sp)
+                            }
+                            OutlinedButton(
+                                onClick = { onRequestService("NAPKINS", "Fresh Table Napkins") },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldPrimary),
+                                modifier = Modifier.weight(1f).testTag("btn_request_napkins"),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("🧻 Napkins", fontSize = 11.sp)
+                            }
+                            OutlinedButton(
+                                onClick = { onRequestService("REQUEST_BILL", "Printed Tax Invoice") },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldPrimary),
+                                modifier = Modifier.weight(1f).testTag("btn_request_bill"),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(imageVector = Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Printed Bill", fontSize = 11.sp)
+                                Text("Bill", fontSize = 11.sp)
+                            }
+                        }
+                    }
+
+                    // Active Service Requests Tracking List
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, DarkCardBorder, RoundedCornerShape(16.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "LIVE SERVICE REQUEST STATUS",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldPrimary
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                if (serviceRequests.isEmpty()) {
+                                    Text(
+                                        text = "No active service requests. Tap above to request waiter or items.",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    )
+                                } else {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        serviceRequests.forEach { req ->
+                                            val statusBg = when (req.status) {
+                                                "PENDING" -> Color(0xFFF59E0B).copy(alpha = 0.2f)
+                                                "ASSIGNED", "ACCEPTED" -> Color(0xFF3B82F6).copy(alpha = 0.2f)
+                                                "SERVING" -> Color(0xFF8B5CF6).copy(alpha = 0.2f)
+                                                "COMPLETED", "FULFILLED" -> Color(0xFF10B981).copy(alpha = 0.2f)
+                                                else -> Color.Gray.copy(alpha = 0.2f)
+                                            }
+
+                                            val statusColor = when (req.status) {
+                                                "PENDING" -> Color(0xFFF59E0B)
+                                                "ASSIGNED", "ACCEPTED" -> Color(0xFF3B82F6)
+                                                "SERVING" -> Color(0xFF8B5CF6)
+                                                "COMPLETED", "FULFILLED" -> Color(0xFF10B981)
+                                                else -> Color.Gray
+                                            }
+
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .background(DarkBackground)
+                                                    .padding(12.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = req.requestType.replace("_", " "),
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color.White
+                                                    )
+                                                    if (req.note.isNotBlank()) {
+                                                        Text(
+                                                            text = req.note,
+                                                            fontSize = 11.sp,
+                                                            color = Color.Gray
+                                                        )
+                                                    }
+                                                }
+
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = statusBg
+                                                ) {
+                                                    Text(
+                                                        text = req.status,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = statusColor,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

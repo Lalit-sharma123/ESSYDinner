@@ -23,6 +23,7 @@ import com.example.ui.screens.CorporateDiningScreen
 import com.example.ui.screens.DigitalMenuBuilderScreen
 import com.example.ui.screens.FavoritesReviewsScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.ManagerDashboardScreen
 import com.example.ui.screens.MembershipScreen
 import com.example.ui.screens.MyBookingsScreen
 import com.example.ui.screens.NotificationsScreen
@@ -32,6 +33,7 @@ import com.example.ui.screens.QrDiningPortalScreen
 import com.example.ui.screens.RestaurantCrmScreen
 import com.example.ui.screens.RestaurantDetailScreen
 import com.example.ui.screens.SearchScreen
+import com.example.ui.screens.StaffTasksScreen
 import com.example.ui.screens.WaitlistScreen
 import com.example.ui.screens.WalletScreen
 import com.example.ui.theme.DineReserveTheme
@@ -62,6 +64,7 @@ class MainActivity : ComponentActivity() {
             diningSessionDao = database.diningSessionDao(),
             diningOrderDao = database.diningOrderDao(),
             serviceRequestDao = database.serviceRequestDao(),
+            staffTaskDao = database.staffTaskDao(),
             digitalMenuDao = database.digitalMenuDao(),
             crmDao = database.crmDao(),
             corporateDao = database.corporateDao()
@@ -118,6 +121,8 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
     val corporateDepartments by viewModel.corporateDepartments.collectAsStateWithLifecycle()
     val corporateEmployees by viewModel.corporateEmployees.collectAsStateWithLifecycle()
     val corporateApprovals by viewModel.corporateApprovals.collectAsStateWithLifecycle()
+
+    val allStaffTasks by viewModel.allStaffTasks.collectAsStateWithLifecycle()
 
     val unreadNotifications = notifications.count { !it.isRead }
 
@@ -335,6 +340,22 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
                             onBackClick = { viewModel.navigateToScreen(CustomerScreen.HOME) }
                         )
                     }
+                }
+                AppRoleMode.STAFF_APP -> {
+                    StaffTasksScreen(
+                        tasks = allStaffTasks,
+                        onUpdateTaskStatus = { taskId, status ->
+                            viewModel.updateTaskStatus(taskId, status)
+                        }
+                    )
+                }
+                AppRoleMode.MANAGER_DASHBOARD -> {
+                    ManagerDashboardScreen(
+                        tasks = allStaffTasks,
+                        onAssignTask = { taskId, staffId, staffName ->
+                            viewModel.assignStaffTask(taskId, staffId, staffName)
+                        }
+                    )
                 }
                 AppRoleMode.RESTAURANT_OWNER -> {
                     if (currentDetailRestaurant != null) {

@@ -115,8 +115,10 @@ fun TopRoleHeaderBar(
             ) {
                 val modes = listOf(
                     AppRoleMode.CUSTOMER to "Customer",
-                    AppRoleMode.RESTAURANT_OWNER to "Owner Panel",
-                    AppRoleMode.PLATFORM_ADMIN to "Admin Panel"
+                    AppRoleMode.STAFF_APP to "Staff App",
+                    AppRoleMode.MANAGER_DASHBOARD to "Manager",
+                    AppRoleMode.RESTAURANT_OWNER to "Owner",
+                    AppRoleMode.PLATFORM_ADMIN to "Admin"
                 )
 
                 modes.forEach { (mode, label) ->

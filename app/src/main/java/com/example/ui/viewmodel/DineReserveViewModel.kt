@@ -19,6 +19,7 @@ import com.example.data.model.OfferEntity
 import com.example.data.model.RestaurantEntity
 import com.example.data.model.ReviewEntity
 import com.example.data.model.ServiceRequestEntity
+import com.example.data.model.StaffTaskEntity
 import com.example.data.model.WaitlistEntity
 import com.example.data.repository.DineReserveRepository
 import kotlinx.coroutines.delay
@@ -33,7 +34,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 enum class AppRoleMode {
-    CUSTOMER, RESTAURANT_OWNER, PLATFORM_ADMIN
+    CUSTOMER, RESTAURANT_OWNER, STAFF_APP, MANAGER_DASHBOARD, PLATFORM_ADMIN
 }
 
 enum class CustomerScreen {
@@ -151,6 +152,9 @@ class DineReserveViewModel(private val repository: DineReserveRepository) : View
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val activeSessionRequests: StateFlow<List<ServiceRequestEntity>> = repository.getServiceRequestsForSession("ds_active")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allStaffTasks: StateFlow<List<StaffTaskEntity>> = repository.allStaffTasks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- MODULE 3: DIGITAL MENU STATE ---
@@ -548,6 +552,38 @@ class DineReserveViewModel(private val repository: DineReserveRepository) : View
         }
     }
 
+    fun sendServiceRequest(
+        requestType: String,
+        note: String,
+        itemsSummary: String = "",
+        quantity: Int = 1,
+        priority: String = "NORMAL"
+    ) {
+        viewModelScope.launch {
+            repository.requestService(
+                sessionId = "ds_active",
+                tableNumber = "Table 14 (Window)",
+                requestType = requestType,
+                note = note,
+                itemsSummary = itemsSummary,
+                quantity = quantity,
+                priority = priority
+            )
+        }
+    }
+
+    fun updateStaffTaskStatus(taskId: String, newStatus: String) {
+        viewModelScope.launch {
+            repository.updateStaffTaskStatus(taskId, newStatus)
+        }
+    }
+
+    fun assignStaffTask(taskId: String, staffId: String, staffName: String) {
+        viewModelScope.launch {
+            repository.assignStaffTask(taskId, staffId, staffName)
+        }
+    }
+
     fun checkoutDiningSession() {
         viewModelScope.launch {
             repository.checkoutDiningSession("ds_active")
@@ -639,6 +675,13 @@ class DineReserveViewModel(private val repository: DineReserveRepository) : View
     fun updateCorporateApprovalStatus(approvalId: String, status: String) {
         viewModelScope.launch {
             repository.updateCorporateApprovalStatus(approvalId, status)
+        }
+    }
+
+    // --- STAFF & SERVICE REQUEST ACTIONS ---
+    fun updateTaskStatus(taskId: String, status: String) {
+        viewModelScope.launch {
+            repository.updateStaffTaskStatus(taskId, status)
         }
     }
 }

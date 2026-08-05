@@ -286,43 +286,9 @@ fun OwnerPanelScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                            modifier = Modifier
-                                .weight(1f)
-                                .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Parking Lot", fontSize = 10.sp, color = Color.Gray)
-                                Text("70% Full", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFF10B981))
-                                Text("14 of 20 Slots", fontSize = 9.sp, color = Color.LightGray)
-                            }
-                        }
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                            modifier = Modifier
-                                .weight(1f)
-                                .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("No-Show Rate", fontSize = 10.sp, color = Color.Gray)
-                                Text("3.5%", fontSize = 16.sp, fontWeight = FontWeight.Black, color = VegGreen)
-                                Text("Cancel: 4.8%", fontSize = 9.sp, color = Color.LightGray)
-                            }
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Secondary Metrics & Satisfaction Card
+                    // Service Requests KPI Row
                     Card(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = DarkSurface),
@@ -331,11 +297,25 @@ fun OwnerPanelScreen(
                             .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("PERFORMANCE SUMMARY", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                            Text("SERVICE REQUESTS & WAITER RESPONSE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("● Customer Satisfaction Score: 4.9 / 5.0 (98% Positive)", fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            Text("● Total Bookings Today: 22 Bookings | 16 Walk-Ins", fontSize = 12.sp, color = Color.LightGray)
-                            Text("● Average Dining Duration: 48 Minutes per table", fontSize = 12.sp, color = Color.LightGray)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Today Requests", fontSize = 10.sp, color = Color.Gray)
+                                    Text("48", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                                Column {
+                                    Text("Avg Response Time", fontSize = 10.sp, color = Color.Gray)
+                                    Text("2.1 min", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
+                                }
+                                Column {
+                                    Text("Fulfill Rate", fontSize = 10.sp, color = Color.Gray)
+                                    Text("97.8%", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                                }
+                            }
                         }
                     }
                 }
@@ -443,7 +423,7 @@ fun OwnerPanelScreen(
                     }
                 }
             }
-            1 -> {
+            3 -> {
                 // Menu Manager
                 Column(
                     modifier = Modifier
@@ -518,7 +498,7 @@ fun OwnerPanelScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Text("CURRENT MENU DINES", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                    Text("CURRENT MENU ITEMS", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -551,7 +531,7 @@ fun OwnerPanelScreen(
                     }
                 }
             }
-            2 -> {
+            4 -> {
                 // Offer Rules
                 Column(modifier = Modifier.padding(16.dp)) {
                     Card(
@@ -601,6 +581,7 @@ fun OwnerPanelScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
                     Card(
@@ -611,11 +592,34 @@ fun OwnerPanelScreen(
                             .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("THIS MONTH PERFORMANCE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                            Text("REVENUE & BOOKING ANALYTICS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Total Table Bookings: 148", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Net Revenue Generated: $12,450.00", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = VegGreen)
+                            Text("Total Table Bookings: 148", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Net Revenue Generated: $12,450.00", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = VegGreen)
                             Text("Avg Rating: 4.9 ★", fontSize = 14.sp, color = GoldPrimary)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("SERVICE REQUESTS & WAITER PERFORMANCE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldPrimary)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("● Total Requests Today: 48", fontSize = 13.sp, color = Color.White)
+                            Text("● Average Response Time: 2.1 Minutes", fontSize = 13.sp, color = Color(0xFF10B981))
+                            Text("● Fulfillment Rate: 97.8%", fontSize = 13.sp, color = GoldPrimary)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text("Most Requested Items:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.LightGray)
+                            Text("1. Water Refill (22 requests)", fontSize = 12.sp, color = Color.White)
+                            Text("2. Extra Cutlery / Spoons (12 requests)", fontSize = 12.sp, color = Color.White)
+                            Text("3. Printed Tax Bill (8 requests)", fontSize = 12.sp, color = Color.White)
                         }
                     }
                 }
