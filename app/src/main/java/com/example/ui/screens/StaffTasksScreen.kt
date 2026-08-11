@@ -1,5 +1,16 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -18,8 +29,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assignment
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.Refresh
@@ -61,7 +72,7 @@ fun StaffTasksScreen(
     onUpdateTaskStatus: (taskId: String, newStatus: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedFilterTab by remember { mutableStateOf(0) } // 0: All, 1: Pending, 2: Accepted/In Progress, 3: Completed
+    var selectedFilterTab by remember { mutableStateOf(0) } // 0: All, 1: Pending, 2: Active, 3: Done
 
     val filteredTasks = when (selectedFilterTab) {
         1 -> tasks.filter { it.taskStatus == "PENDING" }
@@ -162,7 +173,7 @@ fun StaffTasksScreen(
             containerColor = DarkSurface,
             contentColor = GoldPrimary,
             indicator = { tabPositions ->
-                TabRowDefaults.Indicator(
+                TabRowDefaults.SecondaryIndicator(
                     Modifier.tabIndicatorOffset(tabPositions[selectedFilterTab]),
                     color = GoldPrimary
                 )
@@ -239,15 +250,7 @@ fun StaffTaskCard(
     onComplete: () -> Unit,
     onReject: () -> Unit
 ) {
-    val statusBg = when (task.taskStatus) {
-        "PENDING" -> Color(0xFFF59E0B).copy(alpha = 0.2f)
-        "ACCEPTED" -> Color(0xFF3B82F6).copy(alpha = 0.2f)
-        "IN_PROGRESS" -> Color(0xFF8B5CF6).copy(alpha = 0.2f)
-        "COMPLETED" -> Color(0xFF10B981).copy(alpha = 0.2f)
-        else -> Color(0xFFEF4444).copy(alpha = 0.2f)
-    }
-
-    val statusColor = when (task.taskStatus) {
+    val targetColor = when (task.taskStatus) {
         "PENDING" -> Color(0xFFF59E0B)
         "ACCEPTED" -> Color(0xFF3B82F6)
         "IN_PROGRESS" -> Color(0xFF8B5CF6)
@@ -255,12 +258,31 @@ fun StaffTaskCard(
         else -> Color(0xFFEF4444)
     }
 
+    val animatedStatusColor by animateColorAsState(
+        targetValue = targetColor,
+        animationSpec = tween(durationMillis = 400),
+        label = "statusColorAnim"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pulseTransition")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.15f,
+        targetValue = 0.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlphaAnim"
+    )
+
+    val badgeBgAlpha = if (task.taskStatus == "PENDING") pulseAlpha else 0.2f
+
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, DarkCardBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, animatedStatusColor.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
             .testTag("staff_task_card_${task.id}")
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -296,13 +318,13 @@ fun StaffTaskCard(
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = statusBg
+                    color = animatedStatusColor.copy(alpha = badgeBgAlpha)
                 ) {
                     Text(
                         text = task.taskStatus,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = statusColor,
+                        color = animatedStatusColor,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
@@ -336,72 +358,94 @@ fun StaffTaskCard(
                 )
             }
 
-            // Action Buttons based on taskStatus
+            // Action Buttons based on taskStatus with AnimatedContent transition
             Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                when (task.taskStatus) {
-                    "PENDING" -> {
-                        Button(
-                            onClick = onAccept,
-                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color.Black),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.weight(1f).testTag("btn_accept_task_${task.id}")
-                        ) {
-                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Accept", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            AnimatedContent(
+                targetState = task.taskStatus,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(200)))
+                },
+                label = "taskActionTransition"
+            ) { status ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    when (status) {
+                        "PENDING" -> {
+                            Button(
+                                onClick = onAccept,
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color.Black),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.weight(1f).testTag("btn_accept_task_${task.id}")
+                            ) {
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Accept", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedButton(
+                                onClick = onReject,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.weight(1f).testTag("btn_reject_task_${task.id}")
+                            ) {
+                                Icon(imageVector = Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Reject", fontSize = 12.sp)
+                            }
                         }
-                        OutlinedButton(
-                            onClick = onReject,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.weight(1f).testTag("btn_reject_task_${task.id}")
-                        ) {
-                            Icon(imageVector = Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Reject", fontSize = 12.sp)
+                        "ACCEPTED" -> {
+                            Button(
+                                onClick = onStart,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6), contentColor = Color.White),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.weight(1f).testTag("btn_start_task_${task.id}")
+                            ) {
+                                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Start Task", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
-                    }
-                    "ACCEPTED" -> {
-                        Button(
-                            onClick = onStart,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6), contentColor = Color.White),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.weight(1f).testTag("btn_start_task_${task.id}")
-                        ) {
-                            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Start Task", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        "IN_PROGRESS" -> {
+                            Button(
+                                onClick = onComplete,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981), contentColor = Color.White),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.weight(1f).testTag("btn_complete_task_${task.id}")
+                            ) {
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Complete Task", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
-                    }
-                    "IN_PROGRESS" -> {
-                        Button(
-                            onClick = onComplete,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981), contentColor = Color.White),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.weight(1f).testTag("btn_complete_task_${task.id}")
-                        ) {
-                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Complete Task", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        "COMPLETED" -> {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "✓ Task Completed Successfully",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF10B981),
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
                         }
-                    }
-                    "COMPLETED" -> {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFF10B981).copy(alpha = 0.15f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = "✓ Task Completed Successfully",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF10B981),
-                                modifier = Modifier.padding(8.dp)
-                            )
+                        else -> {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFEF4444).copy(alpha = 0.15f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "Task Status: $status",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFFEF4444),
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
                         }
                     }
                 }

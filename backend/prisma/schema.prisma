@@ -70,6 +70,9 @@ model User {
   vipProfile       VipProfile?
   preferences      CustomerPreference[]
   visitHistories   VisitHistory[]
+  serviceRequests  ServiceRequest[]
+  staffTasks       StaffTask[]
+  staffStatus      StaffStatus?
 }
 
 model Restaurant {
@@ -107,6 +110,8 @@ model Restaurant {
   parkingLots        ParkingLot[]
   operationsMetrics  OperationsMetric[]
   visitHistories     VisitHistory[]
+  serviceRequests    ServiceRequest[]
+  staffTasks         StaffTask[]
 }
 
 model MenuItem {
@@ -165,6 +170,7 @@ model Booking {
   createdAt          DateTime          @default(now())
 
   qrRecord           QrCodeSessionRecord?
+  serviceRequests    ServiceRequest[]
 }
 
 model WaitlistEntry {
@@ -274,10 +280,13 @@ enum TaskStatus {
 model ServiceRequest {
   id                 String               @id @default(uuid())
   restaurantId       String               @default("rest_1")
+  restaurant         Restaurant?          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   bookingId          String               @default("")
+  booking            Booking?             @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   sessionId          String
   session            DiningSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   customerId         String               @default("")
+  customer           User?                @relation(fields: [customerId], references: [id], onDelete: SetNull)
   tableId            String               @default("")
   tableNumber        String               @default("T-01")
   requestType        ServiceRequestType   @default(CALL_WAITER)
@@ -306,9 +315,11 @@ model ServiceRequestItem {
 model StaffTask {
   id                      String            @id @default(uuid())
   restaurantId            String            @default("rest_1")
+  restaurant              Restaurant?       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   serviceRequestId        String
   serviceRequest          ServiceRequest    @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
   assignedStaffId         String            @default("")
+  assignedStaff           User?             @relation(fields: [assignedStaffId], references: [id], onDelete: SetNull)
   assignedStaffName       String            @default("Unassigned")
   taskStatus              TaskStatus        @default(PENDING)
   acceptedAt              DateTime?
@@ -344,6 +355,7 @@ model TaskHistory {
 model StaffStatus {
   id               String   @id @default(uuid())
   staffId          String   @unique
+  staff            User?    @relation(fields: [staffId], references: [id], onDelete: Cascade)
   staffName        String   @default("Staff Member")
   online           Boolean  @default(true)
   busy             Boolean  @default(false)

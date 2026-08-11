@@ -85,7 +85,7 @@ abstract class DineReserveDatabase : RoomDatabase() {
                     DineReserveDatabase::class.java,
                     "dinereserve_database"
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
                 INSTANCE = instance
                 instance

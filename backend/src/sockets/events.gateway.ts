@@ -71,4 +71,40 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`restaurant_${restaurantId}`).emit('vip.arrived', payload);
     this.server.to(`restaurant_${restaurantId}`).emit('customer.checkedin', payload);
   }
+
+  // Restaurant Service Request & Waiter Task Socket Events
+  notifyServiceRequestCreated(restaurantId: string, payload: any) {
+    this.server.to(`restaurant_${restaurantId}`).emit('service_request_created', payload);
+    this.server.emit('service_request_created', payload);
+  }
+
+  notifyServiceRequestUpdated(restaurantId: string, payload: any) {
+    this.server.to(`restaurant_${restaurantId}`).emit('service_request_updated', payload);
+    this.server.emit('service_request_updated', payload);
+  }
+
+  notifyStaffTaskAssigned(restaurantId: string, payload: any) {
+    this.server.to(`restaurant_${restaurantId}`).emit('staff_task_assigned', payload);
+    this.server.emit('staff_task_assigned', payload);
+  }
+
+  notifyStaffTaskAccepted(restaurantId: string, payload: any) {
+    this.server.to(`restaurant_${restaurantId}`).emit('staff_task_accepted', payload);
+    this.server.emit('staff_task_accepted', payload);
+  }
+
+  notifyStaffTaskStarted(restaurantId: string, payload: any) {
+    this.server.to(`restaurant_${restaurantId}`).emit('staff_task_started', payload);
+    this.server.emit('staff_task_started', payload);
+  }
+
+  notifyStaffTaskCompleted(restaurantId: string, payload: any) {
+    this.server.to(`restaurant_${restaurantId}`).emit('staff_task_completed', payload);
+    this.server.emit('staff_task_completed', payload);
+  }
+
+  notifyStaffStatusChanged(restaurantId: string, payload: any) {
+    this.server.to(`restaurant_${restaurantId}`).emit('staff_status_changed', payload);
+    this.server.emit('staff_status_changed', payload);
+  }
 }
