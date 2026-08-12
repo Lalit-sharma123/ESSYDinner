@@ -684,5 +684,29 @@ class DineReserveViewModel(private val repository: DineReserveRepository) : View
             repository.updateStaffTaskStatus(taskId, status)
         }
     }
+
+    // --- GOOGLE MAPS GROUNDING STATE & ACTIONS (gemini-3.5-flash) ---
+    private val _mapsGroundedResponse = MutableStateFlow<com.example.data.remote.api.MapsGroundedResponse?>(null)
+    val mapsGroundedResponse: StateFlow<com.example.data.remote.api.MapsGroundedResponse?> = _mapsGroundedResponse.asStateFlow()
+
+    private val _isMapsSearching = MutableStateFlow(false)
+    val isMapsSearching: StateFlow<Boolean> = _isMapsSearching.asStateFlow()
+
+    fun queryGoogleMapsGroundedConcierge(prompt: String) {
+        if (prompt.isBlank()) return
+        viewModelScope.launch {
+            _isMapsSearching.value = true
+            val response = com.example.data.remote.api.GeminiMapsService.queryMapsGroundedConcierge(
+                userPrompt = prompt,
+                currentLocation = _selectedCity.value
+            )
+            _mapsGroundedResponse.value = response
+            _isMapsSearching.value = false
+        }
+    }
+
+    fun clearMapsGroundedResponse() {
+        _mapsGroundedResponse.value = null
+    }
 }
 

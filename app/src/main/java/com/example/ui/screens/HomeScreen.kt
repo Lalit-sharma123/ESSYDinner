@@ -51,6 +51,8 @@ import com.example.R
 import com.example.data.model.FavoriteEntity
 import com.example.data.model.OfferEntity
 import com.example.data.model.RestaurantEntity
+import com.example.data.remote.api.MapsGroundedResponse
+import com.example.ui.components.GoogleMapsGroundedCard
 import com.example.ui.components.RestaurantCard
 import com.example.ui.theme.DarkCardBorder
 import com.example.ui.theme.DarkSurface
@@ -66,6 +68,9 @@ fun HomeScreen(
     membershipTier: String,
     rewardPoints: Int,
     selectedCategoryTag: String?,
+    selectedCity: String = "New York",
+    mapsGroundedResponse: MapsGroundedResponse? = null,
+    isMapsSearching: Boolean = false,
     onCategoryTagSelect: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
     onRestaurantClick: (String) -> Unit,
@@ -77,7 +82,9 @@ fun HomeScreen(
     onQrDiningClick: () -> Unit = {},
     onCorporateClick: () -> Unit = {},
     onCrmClick: () -> Unit = {},
-    onMenuBuilderClick: () -> Unit = {}
+    onMenuBuilderClick: () -> Unit = {},
+    onMapsGroundedSearch: ((String) -> Unit)? = null,
+    onClearMapsGroundedResponse: (() -> Unit)? = null
 ) {
     Column(
         modifier = Modifier
@@ -104,11 +111,22 @@ fun HomeScreen(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Search cuisines, restaurants...",
+                    text = "Search cuisines, restaurants, or ask Maps AI...",
                     color = Color(0xFF4B5563),
                     fontSize = 14.sp
                 )
             }
+        }
+
+        // Live Google Maps Grounding Concierge Section
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+            GoogleMapsGroundedCard(
+                currentCity = selectedCity,
+                mapsGroundedResponse = mapsGroundedResponse,
+                isSearching = isMapsSearching,
+                onSearch = { prompt -> onMapsGroundedSearch?.invoke(prompt) },
+                onClear = { onClearMapsGroundedResponse?.invoke() }
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))

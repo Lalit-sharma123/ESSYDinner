@@ -105,6 +105,10 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
     val membershipTier by viewModel.userMembershipTier.collectAsStateWithLifecycle()
     val rewardPoints by viewModel.rewardPoints.collectAsStateWithLifecycle()
 
+    // Google Maps Grounding State (gemini-3.5-flash)
+    val mapsGroundedResponse by viewModel.mapsGroundedResponse.collectAsStateWithLifecycle()
+    val isMapsSearching by viewModel.isMapsSearching.collectAsStateWithLifecycle()
+
     // Module 1, 2, 3, 4, 5 State Collections
     val allWaitlistEntries by viewModel.allWaitlistEntries.collectAsStateWithLifecycle()
     val waitlistCountdownSeconds by viewModel.waitlistCountdownSeconds.collectAsStateWithLifecycle()
@@ -188,6 +192,9 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
                             membershipTier = membershipTier,
                             rewardPoints = rewardPoints,
                             selectedCategoryTag = selectedCategoryTag,
+                            selectedCity = selectedCity,
+                            mapsGroundedResponse = mapsGroundedResponse,
+                            isMapsSearching = isMapsSearching,
                             onCategoryTagSelect = { viewModel.setCategoryTag(it) },
                             onToggleFavorite = { viewModel.toggleFavorite(it, favorites) },
                             onRestaurantClick = { viewModel.openRestaurantDetail(it) },
@@ -199,7 +206,9 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
                             onQrDiningClick = { viewModel.navigateToScreen(CustomerScreen.QR_DINING_PORTAL) },
                             onCorporateClick = { viewModel.navigateToScreen(CustomerScreen.CORPORATE_DINING) },
                             onCrmClick = { viewModel.navigateToScreen(CustomerScreen.RESTAURANT_CRM) },
-                            onMenuBuilderClick = { viewModel.navigateToScreen(CustomerScreen.DIGITAL_MENU_BUILDER) }
+                            onMenuBuilderClick = { viewModel.navigateToScreen(CustomerScreen.DIGITAL_MENU_BUILDER) },
+                            onMapsGroundedSearch = { prompt -> viewModel.queryGoogleMapsGroundedConcierge(prompt) },
+                            onClearMapsGroundedResponse = { viewModel.clearMapsGroundedResponse() }
                         )
                         CustomerScreen.SEARCH -> SearchScreen(
                             searchQuery = searchQuery,
@@ -207,13 +216,18 @@ fun DineReserveAppContent(viewModel: DineReserveViewModel) {
                             selectedSort = selectedSort,
                             restaurants = filteredRestaurants,
                             favorites = favorites,
+                            selectedCity = selectedCity,
+                            mapsGroundedResponse = mapsGroundedResponse,
+                            isMapsSearching = isMapsSearching,
                             onSearchQueryChange = { viewModel.setSearchQuery(it) },
                             onToggleFilter = { viewModel.toggleFilter(it) },
                             onSortChange = { viewModel.setSortOption(it) },
                             onClearFilters = { viewModel.clearFilters() },
                             onToggleFavorite = { viewModel.toggleFavorite(it, favorites) },
                             onRestaurantClick = { viewModel.openRestaurantDetail(it) },
-                            onBookClick = { viewModel.startBooking(it) }
+                            onBookClick = { viewModel.startBooking(it) },
+                            onMapsGroundedSearch = { prompt -> viewModel.queryGoogleMapsGroundedConcierge(prompt) },
+                            onClearMapsGroundedResponse = { viewModel.clearMapsGroundedResponse() }
                         )
                         CustomerScreen.RESTAURANT_DETAIL -> {
                             if (currentDetailRestaurant != null) {
