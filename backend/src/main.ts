@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -33,8 +34,21 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('swagger', app, document);
 
-  const port = process.env.PORT || 3000;
-  await app.listen(port);
+  const preferredPort = parseInt(process.env.BACKEND_PORT || '3000', 10);
+  let port = preferredPort;
+
+  try {
+    await app.listen(port);
+  } catch (err: any) {
+    if (err?.code === 'EADDRINUSE') {
+      port = preferredPort + 1;
+      console.warn(`Port ${preferredPort} in use, trying fallback port ${port}`);
+      await app.listen(port);
+    } else {
+      throw err;
+    }
+  }
+
   console.log(`🚀 DineReserve Backend running on port ${port}`);
   console.log(`📑 Swagger Documentation available at http://localhost:${port}/swagger`);
 }

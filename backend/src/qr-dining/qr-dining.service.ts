@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ServiceRequestType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddOrderItemDto, CalculateSplitDto, ServiceRequestDto, StartSessionDto } from './dto/qr-dining.dto';
 import { EventsGateway } from '../sockets/events.gateway';
@@ -79,7 +80,7 @@ export class QrDiningService {
     return this.prisma.serviceRequest.create({
       data: {
         sessionId,
-        requestType: dto.requestType,
+        requestType: dto.requestType as ServiceRequestType,
         note: dto.note || '',
       },
     });
